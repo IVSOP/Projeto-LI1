@@ -13,7 +13,6 @@ import LI12122
 validaPotencialMapa :: [(Peca, Coordenadas)] -> Bool
 validaPotencialMapa pecas = undefined
 
-
 -- ordena a lista de pontos segundo x e y crescente
 ordena :: [(Peca,Coordenadas)] -> [(Peca,Coordenadas)]
 ordena [] = []
@@ -45,13 +44,47 @@ getLinha ((e@(_,(_,y))):l) n | y == n = e:(getLinha l n)
                              | otherwise = getLinha l n
 
 -- conta o numero de portas
-contaPorta :: [(Peca,Coordenadas)] -> Int
-contaPorta [] = 0
-contaPorta ((x,_):l) | x == Porta = 1 + (contaPorta l)
-                     | otherwise = contaPorta l
+contaPortas :: [(Peca,Coordenadas)] -> Int
+contaPortas [] = 0
+contaPortas ((x,_):l) | x == Porta = 1 + (contaPortas l)
+                     | otherwise = contaPortas l
 
 -- devolve pecas dada as coordenadas
 getPeca :: [(Peca,Coordenadas)] -> Coordenadas -> [(Peca,Coordenadas)]
 getPeca [] _ = error "nenhuma peca encontrada"
 getPeca ((p,c1):l) c2 | c1 == c2 = (p,c1):(getPeca l c2)
                       | otherwise = getPeca l c2
+
+
+-- 2.1.1 - Função que testa se existem declarações de peças no mesmo síto -- dois processos para exeplorar
+-- assume-se que a lista não é vazia
+pecaSingular :: [(Peca, Coordenadas)] -> Bool
+pecaSingular [x] = True
+pecaSingular ((_,p):t) = not(p `elem` (converSecond t)) && pecaSingular t 
+
+ -- Função auxiliar que retorna apenas as "Coordenadas" de qualquer lista de pares ("Peca", "Coordenadas")
+converSecond :: [(Peca, Coordenadas)] -> [(Coordenadas)]
+converSecond [] = []
+converSecond ((_,(x,y)):t) = (x,y) : (converSecond t)
+
+-- TO DO -- Outra forma de resolução da 2.1.1 por explorar
+{-
+pecaSingular :: [(Peca, Coordenadas)] -> Bool
+pecaSingular [x] = True
+pecaSingular l@(h:t) = length (getPeca l h) <= 1 && pecaSingular t
+-}
+
+ -- 2.1.2 - Função que declara exatamente uma porta
+declarePorta :: [(Peca,Coordenadas)] -> Bool
+declarePorta l = contaPortas l == 1
+
+ -- TO DO -- 2.1.3 - Função que verifica se as caixas estão em posições permitidas 
+ {-
+ posCaixa :: [(Peca, Coordenadas)] -> Bool
+ posCaixa [] = True
+ posCaixa l1@((obj1, (x,y)):t) | obj1 == Caixa && obj2 == Caixa = posCaixa ((obj2, cords):t)
+                               | obj1 == Caixa && obj2 /= Bloco = False -- caso a caixa esteja posicionada em cima de uma porta
+                               | obj1 == Caixa = length l1' == 1
+                               | otherwise = posCaixa t
+            where l1'@[(obj2, cords)] = getPeca l1 (x,y-1)
+-}
