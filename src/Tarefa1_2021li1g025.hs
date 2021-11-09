@@ -14,30 +14,44 @@ validaPotencialMapa :: [(Peca, Coordenadas)] -> Bool
 validaPotencialMapa pecas = undefined
 
 
--- testa se a última linha tem vazios, ou seja, se o x max do mapa é igual ao x max da linha, e se não há espacos vazios na linha
-validaBase :: [(Peca,Coordenadas)] -> Bool
-validaBase [] = True
-validaBase l | xMax l <= xMax ult = if (length [(peca,(x,y)) | (peca,(x,y)) <- ult, peca == Bloco]) == (xMax ult)+1 -- se o numero de blocos (length ...) for igual ao xMax+1, todas as colunas têm bloco por baixo
-                                    then True
-                                    else False
+-- ordena a lista de pontos segundo x e y crescente
+ordena :: [(Peca,Coordenadas)] -> [(Peca,Coordenadas)]
+ordena [] = []
+ordena (x:l) = inserePeca x (ordena l)
 
-             | otherwise = False
-             where ult = ultLinha l (yMax l)
+inserePeca :: (Peca, Coordenadas) -> [(Peca,Coordenadas)] -> [(Peca,Coordenadas)]
+inserePeca x [] = [x]
+inserePeca p1@(_,(x1,y1)) (p2@(_,(x2,y2)):l) | x1 > x2 = p2:(inserePeca p1 l)
+                                             | y1 > y2 = p2:(inserePeca p1 l)
+                                             | otherwise = p1:p2:l-- assume-se que nunca pode ser igual a uma peca existente
 
 -- devolve a altura maxima
 yMax :: [(Peca,Coordenadas)] -> Int
 yMax [] = 0
-yMax ((_,(x,y)):l) | y >= yMax l = y
-                   | otherwise = yMax l
+yMax l = case (last l) of (_,(_,y)) -> y
 
--- devolve o comprimento maximo
+-- devolve o comprimento maximo, sendo dados os ultimos elementos de cada linha
 xMax :: [(Peca,Coordenadas)] -> Int
 xMax [] = 0
-xMax ((_,(x,y)):l) | x >= xMax l = x
-                   | otherwise = xMax l
+xMax [(_,(x,_))] = x
+xMax ((p1@(_,(x,_))):l) | x > x2 = x
+                        | otherwise = x2
+                        where x2 = xMax l
 
--- devolve a ultima linha, dada a sua altura (yMax)
-ultLinha :: [(Peca,Coordenadas)] -> Int -> [(Peca,Coordenadas)]
-ultLinha [] _ = []
-ultLinha ((e@(_,(_,y))):l) n | y == n = e:(ultLinha l n)  
-                             | otherwise = ultLinha l n
+-- devolve uma linha, dada a sua altura (yMax para ultima linha)
+getLinha :: [(Peca,Coordenadas)] -> Int -> [(Peca,Coordenadas)]
+getLinha [] _ = []
+getLinha ((e@(_,(_,y))):l) n | y == n = e:(getLinha l n)
+                             | otherwise = getLinha l n
+
+-- conta o numero de portas
+contaPorta :: [(Peca,Coordenadas)] -> Int
+contaPorta [] = 0
+contaPorta ((x,_):l) | x == Porta = 1 + (contaPorta l)
+                     | otherwise = contaPorta l
+
+-- devolve pecas dada as coordenadas
+getPeca :: [(Peca,Coordenadas)] -> Coordenadas -> [(Peca,Coordenadas)]
+getPeca [] _ = error "nenhuma peca encontrada"
+getPeca ((p,c1):l) c2 | c1 == c2 = (p,c1):(getPeca l c2)
+                      | otherwise = getPeca l c2
