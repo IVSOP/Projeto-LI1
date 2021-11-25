@@ -18,8 +18,6 @@ Para tal, utilizamos as funções 'insereJogador' e 'jogoToText'
 
 > show (Jogo mapa jogador) = insereJogador jogador (jogoToText mapa)
 -}
-
--- como é que fazemos documentação para a instância???
 instance Show Jogo where
   show (Jogo mapa jogador) = insereJogador jogador (jogoToText mapa)
 
@@ -27,7 +25,7 @@ instance Show Jogo where
 
 -- | Aplica 'jogoToTextAux' a cada linha, recursivamente, adicionando ao fim da linha "\n".
 
--- | Quando o mapa tiver apenas uma lista, não adiciona "\n" para que este não fique no final da expressão
+-- | Quando o mapa tiver apenas uma lista, não adiciona "\n" para que não fique no final da expressão
 jogoToText :: Mapa -- ^ Lista de listas em que cada lista é uma linha de peças
  -> [String] -- ^ Igual ao mapa, mas as peças estão transformadas nos seus correspondentes textuais
 jogoToText [] = []
@@ -60,14 +58,24 @@ De seguida, a string obtida é dividida segundo o valor de x, permitindo obter a
 
 Se o jogador puder ocupar essa casa, ela será substituída pela sua representação e todas as Strings resultantes são concatenadas numa só 
 -}
--- é suposto representar a caixa em cima do jogador??
+-- nota: \n é 1 char e não 2, o que influencia o splitAt de linha (como começa tudo na coordenada 0, este método bate certo) --??
 insereJogador :: Jogador -> [String] -> String
 insereJogador _ [] = error "posição inválida"
-insereJogador (Jogador (x,y) dir caixa) l | posicao == ' ' = (concat l1) ++ ((a ++ [(case dir of Oeste -> '<'
-                                                                                                 Este -> '>')]) ++ b) ++ (concat l2)
-                                          | otherwise = error "posição ocupada"
-                                          where (l1,(linha:l2)) = splitAt y l
-                                                (a,posicao:b) = splitAt x linha
+insereJogador (Jogador (x,y) dir True) l
+   | posicao == ' ' = (concat l1) ++ (c1 ++ "C" ++ c2) ++ ((a ++ [(case dir of Oeste -> '<'
+                                                                               Este -> '>')]) ++ b) ++ (concat l2)
+
+   | otherwise = error "posição ocupada" -- assumimos que quando o jogador pega numa caixa ela desaparece do mapa (está presente no bool do jogador)
+   where (l1,linha1:linha2:l2) = splitAt (y-1) l
+         (c1,caixa:c2) = splitAt x linha1 -- posicao da caixa
+         (a,posicao:b) = splitAt x linha2
+
+insereJogador (Jogador (x,y) dir _) l 
+   | posicao == ' ' = (concat l1) ++ ((a ++ [(case dir of Oeste -> '<'
+                                                          Este -> '>')]) ++ b) ++ (concat l2)
+   | otherwise = error "posição ocupada"
+   where (l1,(linha:l2)) = splitAt y l
+         (a,posicao:b) = splitAt x linha
 
 
--- incompleto l22 l63
+-- incompleto docs instancia
