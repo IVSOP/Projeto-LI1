@@ -5,6 +5,8 @@ Copyright   : Pedro Miguel Meruge Ferreira <a100709@alunos.uminho.pt>;
             : Ivan Sérgio Rocha Ribeiro <a100538@alunos.uminho.pt>;
 
 Módulo para a realização da Tarefa 4 do projeto de LI1 em 2021/22.
+
+O mesmo mapa da Tarefa1 continua a ser usado para os exemplos.
 -}
 module Tarefa4_2021li1g025 where
 
@@ -66,9 +68,14 @@ isBlockorBox direcao l = case direcao of
 
 -- CRITÉRIO ANDAR PARA A ESQUERDA E DIREITA -- 
 
--- | Retorna as coordenadas resultantes de andar para a esquerda ou direita, com ou sem caixa
+{- | Retorna as coordenadas resultantes de andar para a esquerda ou direita, com ou sem caixa
 
--- | Assim, é possível, por exemplo, cair vários blocos de uma só vez ou não sair do lugar se o movimento não for possível
+Assim, é possível, por exemplo, cair vários blocos de uma só vez ou não sair do lugar se o movimento não for possível
+
+Neste exemplo temos Jogador (6,1) Este True
+>>> andar jogo AndarDireita
+(7,5)
+-}
 -- os casos para esquerda e direita são separados para evitar erros (como coordenadas negativas)
 andar :: Jogo -> Movimento -> Coordenadas
 andar (Jogo [] (Jogador c _ _)) _ = c
@@ -100,11 +107,19 @@ andar (Jogo mapa (Jogador (x,y) _ _)) _
           posj = linhaj !! (x+1)
           (x2,y2) = getNext l (x+1,y+1)
 
--- | Devolve as coordenadas bloco mais próximo abaixo de certas coordenadas, se existir
+{- | Devolve as coordenadas bloco mais próximo abaixo de certas coordenadas, se existir
 
--- | É usada, por exemplo, para encontrar onde o jogador irá cair após andar num local sem "chão" imediatamente à sua frente
+É usada, por exemplo, para encontrar onde o jogador irá cair após andar num local sem "chão" imediatamente à sua frente
 
--- | Como esta devolve as coordenadas do bloco ou caixa e não o último vazio, é importante subtrair 1 ao y do resultado final ao utilizar esta função
+Como esta devolve as coordenadas do bloco ou caixa e não o último vazio, é importante subtrair 1 ao y do resultado final ao utilizar esta função
+
+Assume-se que o mapa será aquele sem as linhas "inúteis", ou seja, apenas inclui as linhas diretamente abaixo do jogador
+
+>>> getNext mapa (7,2)
+(7,8), o que estaria errado
+>>> getNext (drop 2 mapa) (7,2)
+(7,6) o que está certo, após remover as linhas que não interessam
+-}
 getNext :: Mapa -> Coordenadas -> Coordenadas
 getNext [] c = c
 getNext (linha:l) (x,y) | (posicao == Bloco || posicao == Caixa) = (x,y)
@@ -172,5 +187,37 @@ pegarCaixa (Jogo _ (Jogador (x,y) direc _)) circle = case direc of
     Este    | (circle !! 4) == Caixa && not(isBlockorBox NE circle) -> True
             | otherwise -> False
 
+{- Devolve um jogo com um mapa em que foi (ou não) inserida a caixa largada pelo jogador
 
-
+Neste exemplo temos Jogador (6,1) Este True
+>>> largarCaixa jogo
+X           X
+X     >     X
+X     X     X
+X    CX     X
+X   XXX X   X
+X CX  X*X  PX
+XXX    XXXXXX
+* é a caixa largada
+-}
+largarCaixa :: Jogo -> Jogo
+largarCaixa jogo@(Jogo mapa (Jogador (x,y) Oeste _))
+    | pos1 /= Vazio = jogo
+    | pos2 /= Vazio = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Oeste False)
+    | otherwise = let (x2,y2) = getNext l2 (x-1,y+1)
+                      (l3,linhac:l4) = splitAt (y2-1) mapa
+                      (c3,posc:c4) = splitAt x2 linhac in
+                  Jogo (l3 ++ [c3 ++ [Caixa] ++ c4] ++ l4) (Jogador (x,y) Oeste False) 
+    where (l1,linha1:linha2:l2) = splitAt (y-1) mapa
+          (c1,pos1:c1l) = splitAt (x-1) linha1
+          (c2,pos2:c2l) = splitAt (x-1) linha2
+largarCaixa jogo@(Jogo mapa (Jogador (x,y) _ _))
+    | pos1 /= Vazio = jogo
+    | pos2 /= Vazio = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Este False)
+    | otherwise = let (x2,y2) = getNext l2 (x+1,y+1)
+                      (l3,linhac:l4) = splitAt (y2-1) mapa
+                      (c3,posc:c4) = splitAt x2 linhac in
+                  Jogo (l3 ++ [c3 ++ [Caixa] ++ c4] ++ l4) (Jogador (x,y) Este False)
+    where (l1,linha1:linha2:l2) = splitAt (y-1) mapa
+          (c1,pos1:c1l) = splitAt (x+1) linha1
+          (c2,pos2:c2l) = splitAt (x+1) linha2

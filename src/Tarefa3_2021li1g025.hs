@@ -5,12 +5,12 @@ Copyright   : Pedro Miguel Meruge Ferreira <a100709@alunos.uminho.pt>;
             : Ivan Sérgio Rocha Ribeiro <a100538@alunos.uminho.pt>;
 
 Módulo para a realização da Tarefa 3 do projeto de LI1 em 2021/22.
+
+O mapa utilizado como exeplo será o mesmo que na Tarefa1, mas em forma [[Peca]]
 -}
 module Tarefa3_2021li1g025 where
 
 import LI12122
-
--- * Expressão principal
 
 {- | Esta expressão será usada para transformar um jogo em texto, transformando-o numa instância da classe Show.
 
@@ -23,9 +23,13 @@ instance Show Jogo where
 
 -- * Funções utilizadas
 
--- | Aplica 'jogoToTextAux' a cada linha, recursivamente, adicionando ao fim da linha "\n".
+{- | Aplica 'jogoToTextAux' a cada linha, recursivamente, adicionando ao fim da linha "\n".
 
--- | Quando o mapa tiver apenas uma lista, não adiciona "\n" para que não fique no final da expressão
+Quando o mapa tiver apenas uma lista, não adiciona "\n" para que não fique no final da expressão
+
+>>> jogoToText mapa
+["X           X\n","X           X\n","X     X     X\n","X    CX     X\n","X   XXX X   X\n","X CX  X X  PX\n","XXX    XXXXXX"]
+-}
 jogoToText :: Mapa -- ^ Lista de listas em que cada lista é uma linha de peças
  -> [String] -- ^ Igual ao mapa, mas as peças estão transformadas nos seus correspondentes textuais
 jogoToText [] = []
@@ -39,6 +43,9 @@ jogoToText (linha:l) = ((jogoToTextAux linha)++"\n"):(jogoToText l)
            Vazio -> ' '
            Caixa -> 'C'
 @
+
+>>> jogoToTextAux [Bloco,Porta,Caixa,Vazio,Bloco]
+"XPC B"
 -}
 jogoToTextAux :: [Peca] -> String
 jogoToTextAux [] = []
@@ -48,7 +55,7 @@ jogoToTextAux (x:linha) =
                  Vazio -> ' '
                  Caixa -> 'C'):(jogoToTextAux linha)
 
-{- | Insere o jogador na lista de Strings criada pelo jogoToText
+{- | Insere o jogador na lista de Strings criada pelo jogoToText, inserindo também uma caixa caso este esteja a carregar uma
 
 Dependendo da sua orientação, este corresponderá a '>' ou '<'
 
@@ -56,9 +63,18 @@ A função funciona dividindo a lista de strings segundo o valor de y, obtendo a
 
 De seguida, a string obtida é dividida segundo o valor de x, permitindo obter a 'casa' que queremos, bem como as casas antes e após
 
-Se o jogador puder ocupar essa casa, ela será substituída pela sua representação e todas as Strings resultantes são concatenadas numa só 
+Se o jogador puder ocupar essa casa, ela será substituída pela sua representação e todas as Strings resultantes são concatenadas numa só
+
+>>> insereJogador (Jogador (1,5) Este False) (jogoToText mapa)
+"X           X
+ X           X
+ X     X     X
+ X    CX     X
+ X   XXX X   X
+ X>CX  X X  PX
+ XXX    XXXXXX"
+(transformando \n em parágrafo)
 -}
--- nota: \n é 1 char e não 2, o que influencia o splitAt de linha (como começa tudo na coordenada 0, este método bate certo) --??
 insereJogador :: Jogador -> [String] -> String
 insereJogador _ [] = error "posição inválida"
 insereJogador (Jogador (x,y) dir True) l
@@ -76,6 +92,3 @@ insereJogador (Jogador (x,y) dir _) l
    | otherwise = error "posição ocupada"
    where (l1,(linha:l2)) = splitAt y l
          (a,posicao:b) = splitAt x linha
-
-
--- incompleto docs instancia

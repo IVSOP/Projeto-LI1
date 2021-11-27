@@ -5,6 +5,14 @@ Copyright   : Pedro Miguel Meruge Ferreira <a100709@alunos.uminho.pt>;
             : Ivan Sérgio Rocha Ribeiro <a100538@alunos.uminho.pt>;
 
 Módulo para a realização da Tarefa 1 do projeto de LI1 em 2021/22.
+
+
+
+Para os exemplos, será utilizado o seguinta mapa:
+
+<<example.png>>
+
+Onde a porta é representada a azul, os blocos a vermelho e as caixas a laranja
 -}
 module Tarefa1_2021li1g025 where
 
@@ -126,7 +134,11 @@ getPeca [] _ = []
 getPeca ((p,c1):l) c2 | c1 == c2 = (p,c1):(getPeca l c2)
                       | otherwise = getPeca l c2
 
--- | Devolve uma coluna de blocos e o mapa sem essa coluna, para maior eficiência na função 'getColunas'
+{- | Devolve uma coluna de blocos e o mapa sem essa coluna, para maior eficiência na função 'getColunas'
+
+>>> getColuna mapa 1
+([Bloco,(1,6)], [(Bloco,(0,0)),...(restante mapa))
+-}
 getColuna :: [(Peca,Coordenadas)] -- ^ Mapa
  -> Int -- ^ Índice da coluna (x)
   -> ([(Peca,Coordenadas)],[(Peca,Coordenadas)]) -- ^ (coluna,mapa sem coluna)
@@ -137,9 +149,13 @@ getColuna (p@(peca,(x,_)):l) n | peca == Bloco = if x == n
                                | otherwise = (a,b)
                                where (a,b) = getColuna l n
 
--- | Devolve uma lista de listas em que cada lista corresponde a uma coluna
+{- | Devolve uma lista de listas em que cada lista corresponde a uma coluna
 
--- | As colunas ficam ordenadas segundo y crescente, mas segundo x decrescente
+As colunas ficam ordenadas segundo y crescente, mas segundo x decrescente
+
+>>> getColunas mapa 12
+[[(Bloco,(12,0)),(Bloco,(12,1)),(Bloco,(12,2)),(Bloco,(12,3)),(Bloco,(12,4)),(Bloco,(12,5)),(Bloco,(12,6))],...,[(Bloco,(8,4)),(Bloco,(8,5)),(Bloco,(8,6))]...
+-}
 getColunas :: [(Peca,Coordenadas)] -- ^ Mapa
  -> Int -- ^ Maior índice de coluna (xmax)
   -> [[(Peca,Coordenadas)]] -- ^ Lista de colunas
@@ -147,7 +163,11 @@ getColunas l n | n < 0 = []
                | otherwise = a:(getColunas b (n-1))
                where (a,b) = getColuna l n
 
--- | Devolve blocos mais "baixos" de cada coluna
+{- | Devolve blocos mais "baixos" de cada coluna
+
+>>> getBase (getColunas mapa 12)
+[(Bloco,(12,6)),(Bloco,(11,6)),(Bloco,(10,6)),(Bloco,(9,6)),(Bloco,(8,6)),(Bloco,(7,6)),(Bloco,(6,5)),(Bloco,(5,4)),...
+-}
 getBase :: [[(Peca,Coordenadas)]] -> [(Peca,Coordenadas)]
 getBase [] = []
 getBase (x:l) | x == [] = getBase l
@@ -205,7 +225,7 @@ validaBase (p:base) ct@(c1:c2:colunas) | validaPeca p c2 = continua
                                              peca = getPeca c1 (x,y-1)
 validaBase _ _ = False 
 
--- | Função que testa se existem declarações de peças no mesmo síto -- dois processos para exeplorar
+-- | Função que testa se existem declarações de peças no mesmo síto
 -- assume-se que a lista não é vazia
 pecaSingular :: [(Peca, Coordenadas)] -> Bool
 pecaSingular [x] = True

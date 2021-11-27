@@ -1,6 +1,7 @@
 module CustomTests where
 
 import LI12122
+import Tarefa1_2021li1g025
 import Tarefa2_2021li1g025
 import Tarefa3_2021li1g025
 import Tarefa4_2021li1g025
@@ -33,7 +34,8 @@ movementListM2J2 = [Trepar,AndarDireita,AndarDireita,AndarDireita,
   AndarEsquerda,InterageCaixa,AndarDireita,InterageCaixa,
   AndarDireita,AndarDireita,AndarDireita,InterageCaixa,
   AndarEsquerda,AndarEsquerda,AndarDireita,InterageCaixa,
-  Trepar,Trepar,AndarDireita]
+  Trepar,Trepar,AndarDireita,AndarEsquerda,AndarEsquerda,
+  Trepar,AndarDireita]
 
 resultT4 = Jogo map2 (Jogador (6,2) Este False)
 
@@ -50,6 +52,13 @@ map4 = [[Bloco,Vazio,Vazio,Vazio,Bloco,Vazio,Vazio,Vazio,Bloco],
         [Bloco,Caixa,Vazio,Vazio,Caixa,Caixa,Vazio,Porta,Bloco],
         [Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco]]
 
+map5 = [[Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Bloco],
+        [Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Bloco],
+        [Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Bloco],
+        [Bloco,Vazio,Vazio,Vazio,Vazio,Caixa,Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Bloco],
+        [Bloco,Vazio,Vazio,Vazio,Bloco,Bloco,Bloco,Vazio,Bloco,Vazio,Vazio,Vazio,Bloco],
+        [Bloco,Vazio,Caixa,Bloco,Vazio,Vazio,Bloco,Vazio,Bloco,Vazio,Vazio,Porta,Bloco],
+        [Bloco,Bloco,Bloco,Vazio,Vazio,Vazio,Vazio,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco]]
 
 
 testsT2 = TestList ["Valida construção do mapa da figura 6" ~: constroiMapa map1 ~=? map1result]
@@ -60,10 +69,10 @@ testsT4 = TestList ["Valida tarefa 4" ~: correrMovimentos (Jogo map2 j2) movemen
                     "Tarefa 4 - Lista de movimentos nula" ~: correrMovimentos resultT4 [] ~=? resultT4]
 
 -- testa as auxiliares especificamente
-testsT4Aux = TestList  ["Valida andar (1)" ~: andar (Jogo map2 (Jogador (5,0) Este False)) AndarDireita ~=? (6,2),
-                        "Valida andar (2)" ~: andar (Jogo map2 (Jogador (2,2) Este False)) AndarEsquerda ~=? (2,2),
-                        "Valida andar (3)" ~: andar (Jogo map2 (Jogador (3,1) Este True)) AndarDireita ~=? (4,2),
-                        "Valida andar (4)" ~: andar (Jogo map2 (Jogador (4,2) Este True)) AndarDireita ~=? (4,2),
+testsT4Aux = TestList  ["Testa andar (1)" ~: andar (Jogo map2 (Jogador (5,0) Este False)) AndarDireita ~=? (6,2),
+                        "Testa andar (2)" ~: andar (Jogo map2 (Jogador (2,2) Este False)) AndarEsquerda ~=? (2,2),
+                        "Testa andar (3)" ~: andar (Jogo map2 (Jogador (3,1) Este True)) AndarDireita ~=? (4,2),
+                        "Testa andar (4)" ~: andar (Jogo map2 (Jogador (4,2) Este True)) AndarDireita ~=? (4,2),
                         "Tarefa 4 - trepar para fresta sem transportar caixa" ~: trepar (Jogo map3 (Jogador (7,2) Oeste False)) Trepar ~=? (6,1),
                         "Tarefa 4 - trepar para fresta a transportar caixa" ~: trepar (Jogo map3 (Jogador (7,2) Oeste True)) Trepar ~=? (7,2),
                         "Tarefa 4 - trepar caixa a transportar caixa" ~: trepar (Jogo map3 (Jogador (5,4) Oeste True)) Trepar ~=? (4,3),
