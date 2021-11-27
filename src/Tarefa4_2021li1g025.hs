@@ -22,9 +22,9 @@ data PontosCardeais = NO | N | NE | O | E | SO | S | SE
 
 -- | Corre um único movimento, devolvendo o jogo no estado após esse movimento
 moveJogador :: Jogo -> Movimento -> Jogo
-moveJogador jogo@(Jogo mapa jogador@(Jogador coord dir caixa)) movimento 
+moveJogador jogo@(Jogo mapa (Jogador coord dir caixa)) movimento 
     | movimento == Trepar = Jogo mapa (Jogador (trepar jogo movimento) dir caixa)
-    | movimento == InterageCaixa = undefined
+    | movimento == InterageCaixa = Jogo mapa (Jogador coord dir (interagirCaixa jogo movimento))
     | movimento == AndarEsquerda = Jogo mapa (Jogador (andar jogo movimento) Oeste caixa) -- estes dois casos sao necessarios para garantir que se troca de direcao sempre
     | movimento == AndarDireita = Jogo mapa (Jogador (andar jogo movimento) Este caixa)
 
@@ -35,6 +35,7 @@ correrMovimentos jogo (mov:l) = correrMovimentos (moveJogador jogo mov) l
 
 -- * Funcções auxiliares
 
+-- acho que se pode tirar. Não está a ser usada ?
 -- | Retorna as coordendas (x,y) de uma peça do mapa
 getpeca :: Mapa -> Coordenadas -> Peca
 getpeca m (x,y) = (m !! y) !! x
@@ -50,9 +51,8 @@ mapAround m (x,y) = mapAroundAux m (x,y) (x-1,y-1)
                                                 | abs (x1-x2) > 1 = mapAroundAux m player (x1-1,y2+1)
                                                 | otherwise = ((m !! y2) !! x2 ) : mapAroundAux m player (x2+1,y2)
 
--- TODO : Tornar mais eficiente esta função usando splitAt
 -- | Testa se um bloco numa posicao cardeal relativa ao jogador é bloco ou caixa
--- | Supõe-se que a lista em que atua é resultante de "mapAround"
+-- | A lista em que atua tem de vir da função "mapAround"
 isBlockorBox :: PontosCardeais -> [Peca] -> Bool 
 isBlockorBox direcao l = case direcao of 
                                 NO -> head l == Bloco || head l == Caixa
@@ -108,8 +108,9 @@ getNext (linha:l) (x,y) | (posicao == Bloco || posicao == Caixa) = (x,y)
 
 -- CRITÉRIO TREPAR --
 
--- | Função que permite o jogador trepar (se possível) o obstáculo imediatamente à sua frente
--- | Verifica se o jogador transporta uma caixa e redireciona os dados para auxiliares ("treparsemCaixa" e "treparcomCaixa")
+-- | Retorna as coordenadas resultantes de tentar trepar o obstáculo imediatamente à sua frente
+
+-- | Verifica inicialemnte se o jogador transporta uma caixa e redireciona os dados para auxiliares ("treparsemCaixa" e "treparcomCaixa")
 trepar :: Jogo -> Movimento -> Coordenadas
 trepar (Jogo [] (Jogador c _ _)) _ = c
 trepar j@(Jogo m (Jogador (x,y) _ carryBox)) _ = case carryBox of 
@@ -117,19 +118,23 @@ trepar j@(Jogo m (Jogador (x,y) _ carryBox)) _ = case carryBox of
     False -> treparsemCaixa j (mapAround m (x,y))
 
 
--- | Quando o jogador não segura uma caixa, @treparsemCaixa@ verifica se existe simultaneamente uma peça bloco/caixa em frente ao jogador e uma peça vazio (ou porta) em cima-frente dele
+-- | Quando o jogador não segura uma caixa, @treparsemCaixa@ verifica se existe simultaneamente um bloco ou caixa em frente ao jogador e uma peça vazio (ou porta) em cima-frente dele
+
 -- | Impede o jogador de trepar portas, peças de vazio, obstáculos com mais de um bloco de altura, entre outras ocorrências
 treparsemCaixa :: Jogo -> [Peca] -> Coordenadas
-treparsemCaixa j@(Jogo m (Jogador (x,y) _ _)) circle | isBlockorBox N circle = (x,y)
+treparsemCaixa j@(Jogo _ (Jogador (x,y) _ _)) circle | isBlockorBox N circle = (x,y)
 treparsemCaixa j@(Jogo m (Jogador (x,y) direc _)) circle = case direc of 
-    Oeste   | isBlockorBox O circle && not((isBlockorBox NO circle)) -> (x-1,y-1)
+    Oeste   | isBlockorBox O circle && not(isBlockorBox NO circle) -> (x-1,y-1)
             | otherwise -> (x,y)
 
-    Este    | isBlockorBox E circle && not((isBlockorBox NE circle)) -> (x+1,y-1)
+    Este    | isBlockorBox E circle && not(isBlockorBox NE circle) -> (x+1,y-1)
             | otherwise -> (x,y)
 
--- | Quando o jogador segura uma caixa, @treparcomCaixa@ atua como a função @treparsemCaixa@, mas também verifica se existe um bloco ou caixa na posição 1 telha à frente e 2 telhas a cima do jogador (imagine-se uma forma de "L")
+-- | Quando o jogador segura uma caixa, @treparcomCaixa@ verifica se existe um bloco ou caixa na posição 1 telha à frente e 2 telhas a cima do jogador (imagine-se uma forma de "L") 
+
 -- | Impede o jogador de trepar para espaços apertados em que o teto não permite o transporte de uma caixa.
+
+-- | Depois valida a ação de trepar sem caixa, chamando a função @treparsemCaixa@
 treparcomCaixa :: Jogo -> [Peca] -> [Peca] ->  Coordenadas
 treparcomCaixa j@(Jogo m (Jogador c@(x,y) direc _)) circlejogador circlecaixa = case direc of 
     Oeste   | isBlockorBox NO circlecaixa -> c
@@ -141,6 +146,26 @@ treparcomCaixa j@(Jogo m (Jogador c@(x,y) direc _)) circlejogador circlecaixa = 
 
 -- CRITÉRIO INTERAGIR COM CAIXA --
 
+-- | Faz com que o jogador carregue/largue uma caixa (se possível)
+interagirCaixa :: Jogo -> Movimento -> Bool
+interagirCaixa (Jogo [] (Jogador _ _ caixa)) _ = caixa
+interagirCaixa j@(Jogo m (Jogador (x,y) _ carryBox)) _ = case carryBox of 
+    True -> undefined
+    False -> pegarCaixa j (mapAround m (x,y))
+
+-- | Quando o jogador não segura uma caixa, @pegarCaixa@ testa a possiblidade de pegar numa caixa
+
+-- | Verifica simultaneamente se existe uma caixa na posição à frente do jogador e, caso haja, verifica se nenhuma caixa ou bloco se encontra por cima dela
+
+-- | Impede o jogador de pegar em caixas quando existem objetos em cima da caixa ou do jogador
+pegarCaixa  :: Jogo -> [Peca] -> Bool
+pegarCaixa (Jogo _ (Jogador (x,y) direc _)) circle | isBlockorBox N circle = False
+pegarCaixa (Jogo _ (Jogador (x,y) direc _)) circle = case direc of 
+    Oeste   | (circle !! 3) == Caixa && not(isBlockorBox NO circle) -> True
+            | otherwise -> False
+
+    Este    | (circle !! 4) == Caixa && not(isBlockorBox NE circle) -> True
+            | otherwise -> False
 
 
 

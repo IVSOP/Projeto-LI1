@@ -44,6 +44,11 @@ map3 = [[Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Bloco,Vazio,Vazio,Bloco],
         [Bloco,Bloco,Vazio,Vazio,Caixa,Vazio,Bloco,Vazio,Vazio,Vazio],
         [Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Vazio,Vazio,Vazio]]
 
+map4 = [[Bloco,Vazio,Vazio,Vazio,Bloco,Vazio,Vazio,Vazio,Bloco],
+        [Bloco,Vazio,Vazio,Vazio,Vazio,Caixa,Vazio,Vazio,Bloco],
+        [Bloco,Vazio,Vazio,Vazio,Bloco,Caixa,Vazio,Vazio,Bloco],
+        [Bloco,Caixa,Vazio,Vazio,Caixa,Caixa,Vazio,Porta,Bloco],
+        [Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco]]
 
 
 
@@ -55,18 +60,27 @@ testsT4 = TestList ["Valida tarefa 4" ~: correrMovimentos (Jogo map2 j2) movemen
                     "Tarefa 4 - Lista de movimentos nula" ~: correrMovimentos resultT4 [] ~=? resultT4]
 
 -- testa as auxiliares especificamente
-testsT4Aux = TestList ["Valida andar (1)" ~: andar (Jogo map2 (Jogador (5,0) Este False)) AndarDireita ~=? (6,2),
-                       "Valida andar (2)" ~: andar (Jogo map2 (Jogador (2,2) Este False)) AndarEsquerda ~=? (2,2),
-                       "Valida andar (3)" ~: andar (Jogo map2 (Jogador (3,1) Este True)) AndarDireita ~=? (4,2),
-                       "Valida andar (4)" ~: andar (Jogo map2 (Jogador (4,2) Este True)) AndarDireita ~=? (4,2),
-                       "Tarefa 4 - trepar para fresta sem transportar caixa" ~: trepar (Jogo map3 (Jogador (7,2) Oeste False)) Trepar ~=? (6,1),
-                       "Tarefa 4 - trepar para fresta a transportar caixa" ~: trepar (Jogo map3 (Jogador (7,2) Oeste True)) Trepar ~=? (7,2),
-                       "Tarefa 4 - trepar caixa a transportar caixa" ~: trepar (Jogo map3 (Jogador (5,4) Oeste True)) Trepar ~=? (4,3),
-                       "Tarefa 4 - trepar muro com vários blocos de altura" ~: trepar (Jogo map3 (Jogador (5,4) Este False)) Trepar ~=? (5,4),
-                       "Tarefa 4 - trepar o vazio" ~: trepar (Jogo map3 (Jogador (2,2) Oeste False)) Trepar ~=? (2,2),
-                       "Tarefa 4 - trepar porta" ~: trepar (Jogo map3 (Jogador (2,2) Este False)) Trepar ~=? (2,2),
-                       "Tarefa 4 - trepar com bloco por cima" ~: trepar (Jogo map3 (Jogador (2,4) Oeste False)) Trepar ~=? (2,4),
-                       "Tarefa 4 - trepar bloco de costas" ~: trepar (Jogo map3 (Jogador (7,2) Este False)) Trepar ~=? (7,2)]
+testsT4Aux = TestList  ["Valida andar (1)" ~: andar (Jogo map2 (Jogador (5,0) Este False)) AndarDireita ~=? (6,2),
+                        "Valida andar (2)" ~: andar (Jogo map2 (Jogador (2,2) Este False)) AndarEsquerda ~=? (2,2),
+                        "Valida andar (3)" ~: andar (Jogo map2 (Jogador (3,1) Este True)) AndarDireita ~=? (4,2),
+                        "Valida andar (4)" ~: andar (Jogo map2 (Jogador (4,2) Este True)) AndarDireita ~=? (4,2),
+                        "Tarefa 4 - trepar para fresta sem transportar caixa" ~: trepar (Jogo map3 (Jogador (7,2) Oeste False)) Trepar ~=? (6,1),
+                        "Tarefa 4 - trepar para fresta a transportar caixa" ~: trepar (Jogo map3 (Jogador (7,2) Oeste True)) Trepar ~=? (7,2),
+                        "Tarefa 4 - trepar caixa a transportar caixa" ~: trepar (Jogo map3 (Jogador (5,4) Oeste True)) Trepar ~=? (4,3),
+                        "Tarefa 4 - trepar muro com vários blocos de altura" ~: trepar (Jogo map3 (Jogador (5,4) Este False)) Trepar ~=? (5,4),
+                        "Tarefa 4 - trepar o vazio" ~: trepar (Jogo map3 (Jogador (2,2) Oeste False)) Trepar ~=? (2,2),
+                        "Tarefa 4 - trepar porta" ~: trepar (Jogo map3 (Jogador (2,2) Este False)) Trepar ~=? (2,2),
+                        "Tarefa 4 - trepar com bloco por cima" ~: trepar (Jogo map3 (Jogador (2,4) Oeste False)) Trepar ~=? (2,4),
+                        "Tarefa 4 - trepar bloco de costas" ~: trepar (Jogo map3 (Jogador (7,2) Este False)) Trepar ~=? (7,2),
+                        "Tarefa 4 - trepar para a mesma posição que a porta" ~: trepar (Jogo map3 (Jogador (7,2) Este False)) Trepar ~=? (7,2),  -- assumo que o jogador poderá trepar para a posição da porta
+                        "Tarefa 4 - pegar caixa de costas" ~: interagirCaixa (Jogo map4 (Jogador (2,3) Este False)) InterageCaixa ~=? False,
+                        "Tarefa 4 - pegar caixa com bloco em cima dela" ~: interagirCaixa (Jogo map4 (Jogador (3,3) Este False)) InterageCaixa ~=? False,
+                        "Tarefa 4 - pegar caixa e bloco em cima do jogador" ~: interagirCaixa (Jogo map4 (Jogador (4,1) Este False)) InterageCaixa ~=? False,
+                        "Tarefa 4 - pegar caixa de torre de caixas" ~: interagirCaixa (Jogo map4 (Jogador (6,3) Oeste False)) InterageCaixa ~=? False,
+                        "Tarefa 4 - pegar bloco" ~: interagirCaixa (Jogo map4 (Jogador (1,2) Oeste False)) InterageCaixa ~=? False,
+                        "Tarefa 4 - pegar porta" ~: interagirCaixa (Jogo map4 (Jogador (6,3) Este False)) InterageCaixa ~=? False,
+                        "Tarefa 4 - pegar ar" ~: interagirCaixa (Jogo map4 (Jogador (1,2) Este False)) InterageCaixa ~=? False]
+
 
 runTestsT4 = runTestTT testsT4
 runTestsT4Aux = runTestTT testsT4Aux
