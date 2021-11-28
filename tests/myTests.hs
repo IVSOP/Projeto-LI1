@@ -21,7 +21,7 @@ map1result = [[Vazio, Vazio, Vazio, Vazio, Vazio, Vazio, Bloco],
 
 j1 = Jogador (5,2) Oeste False
 
-showresult = "      X\n      X\nP    C<P\nXXXXXXX"
+showresult = "      X\n      X\nP   C<X\nXXXXXXX"
 
 
 map1'2 =  [(Bloco,(0,0)),(Bloco,(0,1)),(Bloco,(0,2)),
@@ -131,10 +131,18 @@ testsT2 = TestList ["Valida construção do mapa da figura 6" ~: constroiMapa ma
                     "Tarefa 2 - Constroi mapa com pecas desordenadas" ~: constroiMapa map2'1 ~=? map2'1r,
                     "Tarefa 2 - Desconstroi mapa2'1" ~: sort (desconstroiMapa map2'1r) ~=? sort (map2'1)]
 
-testsT3 = TestList ["Valida tarefa 3" ~: show (Jogo map1result j1) ~=? showresult]
+testsT3 = TestList ["Valida tarefa 3 (o HUnit espera um resultado diferente do pedido???)" ~: show (Jogo map1result j1) ~=? showresult]
 
 testsT4 = TestList ["Valida tarefa 4" ~: correrMovimentos (Jogo map2 j2) movementListM2J2 ~=? resultT4,
-                    "Tarefa 4 - Lista de movimentos nula" ~: correrMovimentos resultT4 [] ~=? resultT4]
+                    "Tarefa 4 - Lista de movimentos nula" ~: correrMovimentos resultT4 [] ~=? resultT4,
+                    "Tarefa 4 - pegar caixa" ~: moveJogador (Jogo map4'2 (Jogador (2,3) Oeste False)) InterageCaixa ~=? Jogo map4'2r (Jogador (2,3) Oeste True),
+                    "Tarefa 4 - pegar caixa de costas" ~: moveJogador (Jogo map4'2 (Jogador (2,3) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (2,3) Este False),
+                    "Tarefa 4 - pegar caixa com bloco em cima da caixa" ~: moveJogador (Jogo map4'2 (Jogador (3,3) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (3,3) Este False),
+                    "Tarefa 4 - pegar caixa e bloco em cima do jogador" ~: moveJogador (Jogo map4'2 (Jogador (4,1) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (4,1) Este False),
+                    "Tarefa 4 - pegar caixa de torre de caixas" ~: moveJogador (Jogo map4'2 (Jogador (6,3) Oeste False)) InterageCaixa ~=? Jogo map4'2 (Jogador (6,3) Oeste False),
+                    "Tarefa 4 - pegar bloco" ~: moveJogador (Jogo map4'2 (Jogador (1,2) Oeste False)) InterageCaixa ~=? Jogo map4'2 (Jogador (1,2) Oeste False),
+                    "Tarefa 4 - pegar porta" ~: moveJogador (Jogo map4'2 (Jogador (6,3) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (6,3) Este False),
+                    "Tarefa 4 - pegar ar" ~: moveJogador (Jogo map4'2 (Jogador (1,2) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (1,2) Este False)]
 
 -- testa as auxiliares especificamente
 testsT4Aux = TestList  ["Testa andar (1)" ~: andar (Jogo map2 (Jogador (5,0) Este False)) AndarDireita ~=? (6,2),
@@ -149,15 +157,7 @@ testsT4Aux = TestList  ["Testa andar (1)" ~: andar (Jogo map2 (Jogador (5,0) Est
                         "Tarefa 4 - trepar porta" ~: trepar (Jogo map4'1 (Jogador (2,2) Este False)) Trepar ~=? (2,2),
                         "Tarefa 4 - trepar com bloco por cima" ~: trepar (Jogo map4'1 (Jogador (2,4) Oeste False)) Trepar ~=? (2,4),
                         "Tarefa 4 - trepar bloco de costas" ~: trepar (Jogo map4'1 (Jogador (7,2) Este False)) Trepar ~=? (7,2),
-                        "Tarefa 4 - trepar para a mesma posição que a porta" ~: trepar (Jogo map4'1 (Jogador (7,2) Este False)) Trepar ~=? (7,2),  -- assumo que o jogador poderá trepar para a posição da porta
-                        "Tarefa 4 - pegar caixa" ~: interagirCaixa (Jogo map4'2 (Jogador (2,3) Oeste False)) InterageCaixa ~=? Jogo map4'2r (Jogador (2,3) Oeste True),
-                        "Tarefa 4 - pegar caixa de costas" ~: interagirCaixa (Jogo map4'2 (Jogador (2,3) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (2,3) Este False),
-                        "Tarefa 4 - pegar caixa com bloco em cima da caixa" ~: interagirCaixa (Jogo map4'2 (Jogador (3,3) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (3,3) Este False),
-                        "Tarefa 4 - pegar caixa e bloco em cima do jogador" ~: interagirCaixa (Jogo map4'2 (Jogador (4,1) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (4,1) Este False),
-                        "Tarefa 4 - pegar caixa de torre de caixas" ~: interagirCaixa (Jogo map4'2 (Jogador (6,3) Oeste False)) InterageCaixa ~=? Jogo map4'2 (Jogador (6,3) Oeste False),
-                        "Tarefa 4 - pegar bloco" ~: interagirCaixa (Jogo map4'2 (Jogador (1,2) Oeste False)) InterageCaixa ~=? Jogo map4'2 (Jogador (1,2) Oeste False),
-                        "Tarefa 4 - pegar porta" ~: interagirCaixa (Jogo map4'2 (Jogador (6,3) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (6,3) Este False),
-                        "Tarefa 4 - pegar ar" ~: interagirCaixa (Jogo map4'2 (Jogador (1,2) Este False)) InterageCaixa ~=? Jogo map4'2 (Jogador (1,2) Este False)]
+                        "Tarefa 4 - trepar para a mesma posição que a porta" ~: trepar (Jogo map4'1 (Jogador (7,2) Este False)) Trepar ~=? (7,2)] -- assumo que o jogador poderá trepar para a posição da porta
 
 runTestsT1 = runTestTT testsT1
 runTestsT2 = runTestTT testsT2
