@@ -25,7 +25,7 @@ instance Show Jogo where
 
 {- | Aplica 'jogoToTextAux' a cada linha, recursivamente, adicionando ao fim da linha "\n".
 
-Quando o mapa tiver apenas uma lista, não adiciona "\n" para que não fique no final da expressão
+Quando o mapa tiver apenas uma lista, não adiciona "\\n" para que não fique no final da expressão
 
 >>> jogoToText mapa
 ["X           X\n","X           X\n","X     X     X\n","X    CX     X\n","X   XXX X   X\n","X CX  X X  PX\n","XXX    XXXXXX"]

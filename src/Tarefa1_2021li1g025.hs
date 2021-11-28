@@ -162,7 +162,7 @@ getColunas l n | n < 0 = []
                | otherwise = a:(getColunas b (n-1))
                where (a,b) = getColuna l n
 
-{- | Devolve blocos mais "baixos" de cada coluna
+{- | Devolve blocos mais "baixos" de cada coluna (dada a lista de colunas)
 
 >>> getBase (getColunas mapa 12)
 [(Bloco,(12,6)),(Bloco,(11,6)),(Bloco,(10,6)),(Bloco,(9,6)),(Bloco,(8,6)),(Bloco,(7,6)),(Bloco,(6,5)),(Bloco,(5,4)),...
