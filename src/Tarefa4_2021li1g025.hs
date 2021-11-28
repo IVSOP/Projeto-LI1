@@ -13,8 +13,6 @@ module Tarefa4_2021li1g025 where
 import LI12122
 import Tarefa3_2021li1g025 -- para dar show ao jogo
 
-import Tarefa3_2021li1g025
-
 -- datatype que permite comparar a posição relativa do jogador com as peças que o circundam
 data PontosCardeais = NO | N | NE | O | E | SO | S | SE 
                     deriving (Show, Eq, Read)
@@ -24,9 +22,11 @@ data PontosCardeais = NO | N | NE | O | E | SO | S | SE
 
 -- | Corre um único movimento, devolvendo o jogo no estado após esse movimento
 moveJogador :: Jogo -> Movimento -> Jogo
-moveJogador jogo@(Jogo mapa (Jogador coord dir caixa)) movimento 
+moveJogador jogo@(Jogo mapa (Jogador coord dir caixa)) movimento
     | movimento == Trepar = Jogo mapa (Jogador (trepar jogo movimento) dir caixa)
-    | movimento == InterageCaixa = interagirCaixa jogo movimento
+    | movimento == InterageCaixa = 
+        case caixa of True -> largarCaixa jogo
+                      False -> pegarCaixa jogo (mapAround mapa coord)
     | movimento == AndarEsquerda = Jogo mapa (Jogador (andar jogo movimento) Oeste caixa) -- estes dois casos sao necessarios para garantir que se troca de direcao sempre
     | movimento == AndarDireita = Jogo mapa (Jogador (andar jogo movimento) Este caixa)
 
@@ -35,7 +35,12 @@ correrMovimentos :: Jogo -> [Movimento] -> Jogo
 correrMovimentos j [] = j
 correrMovimentos jogo (mov:l) = correrMovimentos (moveJogador jogo mov) l
 
--- * Funções auxiliares
+-- * Funcções auxiliares
+
+-- acho que se pode tirar. Não está a ser usada ?
+-- | Retorna as coordendas (x,y) de uma peça do mapa
+getpeca :: Mapa -> Coordenadas -> Peca
+getpeca m (x,y) = (m !! y) !! x
 
 -- | Retorna as peças que circundam o jogador (num raio 1) , pela ordem (NO,N,NE,O,E,SO,S,SE), segundo os pontos cardeais
 -- | Supõe-se que o jogador está sempre rodeado de peças (de qualquer tipo)
@@ -158,16 +163,6 @@ treparcomCaixa j@(Jogo m (Jogador c@(x,y) direc _)) circlejogador circlecaixa = 
     Este    | isBlockorBox NE circlecaixa -> c
             | otherwise -> treparsemCaixa j circlejogador
 
-
--- CRITÉRIO INTERAGIR COM CAIXA --
-
--- | Faz com que o jogador carregue/largue uma caixa (se possível)
-interagirCaixa :: Jogo -> Movimento -> Jogo
-interagirCaixa j@(Jogo [] (Jogador _ _ caixa)) _ = j
-interagirCaixa j@(Jogo m (Jogador (x,y) _ carryBox)) _ = case carryBox of 
-    True -> largarCaixa j
-    False -> pegarCaixa j (mapAround m (x,y))
-
 -- | Quando o jogador não segura uma caixa, 'pegarCaixa' testa a possiblidade de pegar numa caixa ( e consequentemente removê-la do mapa)
 
 -- | Verifica simultaneamente se existe uma caixa na posição à frente do jogador e, caso haja, verifica se nenhuma caixa ou bloco se encontra por cima dela
@@ -191,7 +186,7 @@ pegarCaixa j@(Jogo m (Jogador (x,y) direc _)) circle = case direc of
         where   (mapaAntes,linhaFoco: mapaDepois) = splitAt y m 
                 (antesNaLinha, pecaDepoisdoJogador:depoisNaLinha) = splitAt (x+1) linhaFoco
 
-{- Devolve um jogo com um mapa em que foi (ou não) inserida a caixa largada pelo jogador
+{- | Devolve um jogo com um mapa em que foi (ou não) inserida a caixa largada pelo jogador
 
 Neste exemplo temos Jogador (6,1) Este True
 >>> largarCaixa jogo

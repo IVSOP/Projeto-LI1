@@ -102,7 +102,8 @@ inserePeca :: (Peca, Coordenadas) -> [(Peca,Coordenadas)] -> [(Peca,Coordenadas)
 inserePeca x [] = [x]
 inserePeca p1@(_,(x1,y1)) (p2@(_,(x2,y2)):l) | x1 > x2 = p2:(inserePeca p1 l)
                                              | y1 > y2 = p2:(inserePeca p1 l)
-                                             | otherwise = p1:p2:l-- assume-se que nunca pode ser igual a uma peca existente
+                                             | y1 < y2 = p1:p2:l
+                                             | x1 < x2 = p1:p2:l
 
 -- | Devolve o y maximo do mapa
 yMax :: [(Peca,Coordenadas)] -> Int
@@ -214,9 +215,7 @@ validaBase :: [(Peca,Coordenadas)] -- ^ Base do mapa
   -> Bool -- ^ True se a base for válida
 validaBase [_] _ = True
 validaBase (p:base) ct@(c1:c2:colunas) | validaPeca p c2 = continua
-                                       | peca /= [] = if validaPeca (head peca) c2 -- se fosse caixa, daria erro noutro critério
-                                                         then continua
-                                                         else False
+                                       | peca /= [] = validaBase ((head peca):base) ct -- se fosse caixa, daria erro noutro critério
                                        | otherwise = False
                                        where continua = validaBase base (c2:colunas)
                                              (_,(x,y)) = p
