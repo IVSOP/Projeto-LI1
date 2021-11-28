@@ -26,7 +26,7 @@ data PontosCardeais = NO | N | NE | O | E | SO | S | SE
 moveJogador :: Jogo -> Movimento -> Jogo
 moveJogador jogo@(Jogo mapa (Jogador coord dir caixa)) movimento 
     | movimento == Trepar = Jogo mapa (Jogador (trepar jogo movimento) dir caixa)
-    | movimento == InterageCaixa = Jogo mapa (Jogador coord dir (interagirCaixa jogo movimento))
+    | movimento == InterageCaixa = interagirCaixa jogo movimento
     | movimento == AndarEsquerda = Jogo mapa (Jogador (andar jogo movimento) Oeste caixa) -- estes dois casos sao necessarios para garantir que se troca de direcao sempre
     | movimento == AndarDireita = Jogo mapa (Jogador (andar jogo movimento) Este caixa)
 
@@ -35,12 +35,7 @@ correrMovimentos :: Jogo -> [Movimento] -> Jogo
 correrMovimentos j [] = j
 correrMovimentos jogo (mov:l) = correrMovimentos (moveJogador jogo mov) l
 
--- * Funcções auxiliares
-
--- acho que se pode tirar. Não está a ser usada ?
--- | Retorna as coordendas (x,y) de uma peça do mapa
-getpeca :: Mapa -> Coordenadas -> Peca
-getpeca m (x,y) = (m !! y) !! x
+-- * Funções auxiliares
 
 -- | Retorna as peças que circundam o jogador (num raio 1) , pela ordem (NO,N,NE,O,E,SO,S,SE), segundo os pontos cardeais
 -- | Supõe-se que o jogador está sempre rodeado de peças (de qualquer tipo)
@@ -167,25 +162,34 @@ treparcomCaixa j@(Jogo m (Jogador c@(x,y) direc _)) circlejogador circlecaixa = 
 -- CRITÉRIO INTERAGIR COM CAIXA --
 
 -- | Faz com que o jogador carregue/largue uma caixa (se possível)
-interagirCaixa :: Jogo -> Movimento -> Bool
-interagirCaixa (Jogo [] (Jogador _ _ caixa)) _ = caixa
+interagirCaixa :: Jogo -> Movimento -> Jogo
+interagirCaixa j@(Jogo [] (Jogador _ _ caixa)) _ = j
 interagirCaixa j@(Jogo m (Jogador (x,y) _ carryBox)) _ = case carryBox of 
-    True -> undefined
+    True -> largarCaixa j
     False -> pegarCaixa j (mapAround m (x,y))
 
--- | Quando o jogador não segura uma caixa, @pegarCaixa@ testa a possiblidade de pegar numa caixa
+-- | Quando o jogador não segura uma caixa, 'pegarCaixa' testa a possiblidade de pegar numa caixa ( e consequentemente removê-la do mapa)
 
 -- | Verifica simultaneamente se existe uma caixa na posição à frente do jogador e, caso haja, verifica se nenhuma caixa ou bloco se encontra por cima dela
 
 -- | Impede o jogador de pegar em caixas quando existem objetos em cima da caixa ou do jogador
-pegarCaixa  :: Jogo -> [Peca] -> Bool
-pegarCaixa (Jogo _ (Jogador (x,y) direc _)) circle | isBlockorBox N circle = False
-pegarCaixa (Jogo _ (Jogador (x,y) direc _)) circle = case direc of 
-    Oeste   | (circle !! 3) == Caixa && not(isBlockorBox NO circle) -> True
-            | otherwise -> False
 
-    Este    | (circle !! 4) == Caixa && not(isBlockorBox NE circle) -> True
-            | otherwise -> False
+pegarCaixa  :: Jogo -- ^ Mapa e caraterísticas do jogador
+    -> [Peca] -- ^ lista com as peças que rodeiam o jogador (através de 'mapAround')
+    -> Jogo
+pegarCaixa j@(Jogo m (Jogador (x,y) direc _)) circle | isBlockorBox N circle = j
+pegarCaixa j@(Jogo m (Jogador (x,y) direc _)) circle = case direc of 
+    Oeste   | (circle !! 3) == Caixa && not(isBlockorBox NO circle) -> (Jogo (mapaAntes ++ [antesNaLinha ++ [Vazio] ++ depoisNaLinha] ++ mapaDepois) (Jogador (x,y) direc True))
+            | otherwise -> j
+
+        where   (mapaAntes,linhaFoco: mapaDepois) = splitAt y m 
+                (antesNaLinha, pecaEsquerdadoJogador:depoisNaLinha) = splitAt (x-1) linhaFoco
+
+    Este    | (circle !! 4) == Caixa && not(isBlockorBox NE circle) -> (Jogo (mapaAntes ++ [antesNaLinha ++ [Vazio] ++ depoisNaLinha] ++ mapaDepois) (Jogador (x,y) direc True))
+            | otherwise -> j
+
+        where   (mapaAntes,linhaFoco: mapaDepois) = splitAt y m 
+                (antesNaLinha, pecaDepoisdoJogador:depoisNaLinha) = splitAt (x+1) linhaFoco
 
 {- Devolve um jogo com um mapa em que foi (ou não) inserida a caixa largada pelo jogador
 
