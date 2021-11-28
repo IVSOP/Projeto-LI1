@@ -6,8 +6,6 @@ Copyright   : Pedro Miguel Meruge Ferreira <a100709@alunos.uminho.pt>;
 
 Módulo para a realização da Tarefa 1 do projeto de LI1 em 2021/22.
 
-
-
 Para os exemplos, será utilizado o seguinta mapa:
 
 <<example.png>>
@@ -209,32 +207,28 @@ Neste caso, como existe, esta passa a ser a peça que tem de ser validada
 
 <<map1.5.png>>
 
-Este processo é repetido recursivamente até percorrer toda a base ou chegar a um caso não válido.
+Este processo é repetido até percorrer toda a base ou chegar a um caso não válido.
 -}
 validaBase :: [(Peca,Coordenadas)] -- ^ Base do mapa
  -> [[(Peca,Coordenadas)]]-- ^ Lista de colunas do mapa
   -> Bool -- ^ True se a base for válida
 validaBase [_] _ = True
 validaBase (p:base) ct@(c1:c2:colunas) | validaPeca p c2 = continua
-                                       | peca /= [] = if validaPeca (head peca) c2
-                                                      then continua
-                                                      else False
+                                       | peca /= [] = if validaPeca (head peca) c2 -- se fosse caixa, daria erro noutro critério
+                                                         then continua
+                                                         else False
                                        | otherwise = False
                                        where continua = validaBase base (c2:colunas)
                                              (_,(x,y)) = p
                                              peca = getPeca c1 (x,y-1)
-validaBase _ _ = False 
+validaBase _ _ = False
 
--- | Função que testa se existem declarações de peças no mesmo síto
--- assume-se que a lista não é vazia
+-- | Função que testa se existem declarações de peças no mesmo síto, devolvendo False se uma peca se repetir
 pecaSingular :: [(Peca, Coordenadas)] -> Bool
-pecaSingular [x] = True
-pecaSingular ((_,p):t) = not(p `elem` (converSecond t)) && pecaSingular t 
+pecaSingular [] = True
+pecaSingular ((_,coord):t) | length (getPeca t coord) > 0 = False
+                           | otherwise = pecaSingular t
 
- -- Função auxiliar que retorna apenas as "Coordenadas" de qualquer lista de pares ("Peca", "Coordenadas")
-converSecond :: [(Peca, Coordenadas)] -> [(Coordenadas)]
-converSecond [] = []
-converSecond ((_,(x,y)):t) = (x,y) : (converSecond t)
 
 -- | Verifica se todas as caixas do mapa têm um bloco ou uma caixa na posição diretamente abaixo
 validaCaixas :: [(Peca,Coordenadas)] -> Bool
