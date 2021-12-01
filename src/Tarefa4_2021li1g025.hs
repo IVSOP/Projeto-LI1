@@ -128,14 +128,14 @@ Neste exemplo temos Jogador (6,1) Este True
 andar :: Jogo -> Movimento -> Coordenadas
 andar (Jogo [] (Jogador c _ _)) _ = c
 andar (Jogo mapa (Jogador (x,y) _ True)) AndarEsquerda -- com caixa
-    | posj == Vazio && posc == Vazio = (x2,y2-1) 
+    | (posj == Vazio || posj == Porta) && posc == Vazio = (x2,y2-1) 
     | otherwise = (x,y)
     where linhac:linhaj:l = drop (y-1) mapa
           posj = linhaj !! (x-1)
           posc = linhac !! (x-1)
           (x2,y2) = getNext l (x-1,y+1)
 andar (Jogo mapa (Jogador (x,y) _ True)) _
-    | posj == Vazio && posc == Vazio = (x2,y2-1)
+    | (posj == Vazio || posj == Porta) && posc == Vazio = (x2,y2-1)
     | otherwise = (x,y)
     where linhac:linhaj:l = drop (y-1) mapa
           posj = linhaj !! (x+1)
@@ -143,13 +143,13 @@ andar (Jogo mapa (Jogador (x,y) _ True)) _
           (x2,y2) = getNext l (x+1,y+1)
 
 andar (Jogo mapa (Jogador (x,y) _ _)) AndarEsquerda
-    | posj == Vazio = (x2,y2-1)
+    | (posj == Vazio || posj == Porta) = (x2,y2-1)
     | otherwise = (x,y)
     where linhaj:l = drop y mapa 
           posj = linhaj !! (x-1)
           (x2,y2) = getNext l (x-1,y+1)
 andar (Jogo mapa (Jogador (x,y) _ _)) _
-    | posj == Vazio = (x2,y2-1)
+    | (posj == Vazio || posj == Porta) = (x2,y2-1)
     | otherwise = (x,y)
     where linhaj:l = drop y mapa
           posj = linhaj !! (x+1)
