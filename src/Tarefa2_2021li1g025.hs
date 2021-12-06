@@ -45,7 +45,7 @@ Só funciona se a lista de peças já tiver sido validada (cf. Tarefa 1).
 
 constroiMapa :: [(Peca, Coordenadas)] -> Mapa
 constroiMapa [] = []
-constroiMapa l | validaPotencialMapa l == False = []
+--constroiMapa l | validaPotencialMapa l == False = []
 constroiMapa l = constroiMapaAux list 0 (yMax list) (xMax l)
     where list = ordena l 
 

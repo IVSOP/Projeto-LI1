@@ -2,7 +2,7 @@ module Maps where
 
 import LI12122
 
-map1 = [[Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio],
+map1 = [[Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio],
        [Bloco,Vazio,Vazio,Vazio,Bloco,Vazio,Vazio],
        [Bloco,Vazio,Caixa,Vazio,Bloco,Vazio,Porta],
        [Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco]]

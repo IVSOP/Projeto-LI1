@@ -100,8 +100,8 @@ ordena (x:l) = inserePeca x (ordena l)
 -- | Insere uma peça numa lista (ordenada) de peças
 inserePeca :: (Peca, Coordenadas) -> [(Peca,Coordenadas)] -> [(Peca,Coordenadas)]
 inserePeca x [] = [x]
-inserePeca p1@(_,(x1,y1)) (p2@(_,(x2,y2)):l) | x1 > x2 = p2:(inserePeca p1 l)
-                                             | y1 > y2 = p2:(inserePeca p1 l)
+inserePeca p1@(_,(x1,y1)) (p2@(_,(x2,y2)):l) | x1 >= x2 = p2:(inserePeca p1 l)
+                                             | y1 >= y2 = p2:(inserePeca p1 l)
                                              | y1 < y2 = p1:p2:l
                                              | x1 < x2 = p1:p2:l
 
