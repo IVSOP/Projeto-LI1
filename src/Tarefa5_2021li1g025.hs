@@ -8,8 +8,8 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Graphics.Gloss.Juicy (loadJuicy)
 import LI12122
---ghc -i="src" -i="src2" src2/Gui
 
+-- este jogo inicial não é o jogo inicial absoluto, mas sim o de cada mapa. o mesmo acontece com o estadoBase
 jogoInicial :: Int -> (Jogo,(Int,Int))
 jogoInicial n = maps !! (n-1) -- começa no mapa 1, o menu
 
@@ -35,6 +35,7 @@ data MenuStates = New | Continue | MapEditS | Normal deriving (Eq,Show)
 
 -- no mapEditor, o número de movimentos vai indicar se o jogador está no menu do editor, se quer validar o mapa, ou se quer ver o mapa completo, ou se quer alterar a posição do jogador
 -- 0 1 2 3 modo normal, menu do editor (ecrã com controlos), validar, ver mapa
+-- mo futuro estas informações vão estar no MapEditInfo?
 type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Mov,Mov)) -- peca | jogador?-- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo
 
 type MapSelectInfo = (Jogo, [(Int,Int,Int)]) -- Jogo atual, (coordenadas de portas, nº do nível) 
@@ -54,7 +55,6 @@ fr :: Int
 fr = 50
 
 -- offset é para que o getPictures saiba onde começar a desenhar as imagens (o mais à esquerda possível)
--- offsetY ainda não funciona corretamente (em mapas com mais de 15 blocos de altura)
 draw :: Estado -> Picture
 -- MapEditor
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door]), coords, mov, MapEdit ((x1,y1), (x2,y2), peca, _), _) =
@@ -62,7 +62,7 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight,
     Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
         [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)]))
     where (map2,scale) | mov == 3 = (mapa,0.25)
-                       | otherwise = ((map (\linha -> take 20 linha) (map (\linha -> drop (x1-10) linha) mapa)),1)
+                       | otherwise = (mapa,1) -- ((map (\linha -> take 20 linha) (map (\linha -> drop (x1-10) linha) mapa)),1)
           pecaPic = case peca of Bloco -> brick
                                  Caixa -> crate
                                  Porta -> door
@@ -121,16 +121,12 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
         Pictures ((getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate 0 (((-y2*64))+offsetY) picFinal])
 
     where xmax = fromIntegral (length (head mapa))
-          ymax = length mapa 
-          getOffsetY :: Mapa -> Float
-          getOffsetY map3 = (64)*((ymax2/2))
-                          where ymax2 = fromIntegral (length map3)
+          ymax = (length mapa)-1 -- +1 que o valor maximo de y
           getOffset :: Mapa -> Float -- assume se que o mapa já só tem 20 blocos de comprimento
           getOffset map3 = (-64)*((fromIntegral (length (head map3)))/2)
           offset = -640
           xf = fromIntegral x
           yf = fromIntegral y
-          y2 = fromIntegral (y-(15*(div y 15)))
           player = (case dir of Este -> playerRight
                                 Oeste -> playerLeft)
           picFinal 
@@ -138,11 +134,16 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
             | otherwise = case gamemode of (Menu (_,Normal)) -> player
                                            (Menu (_,texto)) -> Pictures [player, Translate 0 64 (Text "DEBUG")]
                                            _ -> player
+          -- offset vertical
+          getOffsetY :: Mapa -> Float
+          getOffsetY map3 = ((64)*((ymax2/2))-64)
+                          where ymax2 = fromIntegral (length map3)
+          y2 = fromIntegral (y-(15*(div y 15)))
+          getLines :: Int -> Mapa -> Mapa -- devolve linhas do mapa a renderizar consoante altura do jogador
+          getLines y l = drop (15*(section-1)) (take (15*section) l)
+                       where section = (div y 15)+1
 
-          getLines :: Int -> Mapa -> Mapa
-          getLines n l = drop (newY-15) (take newY l)
-                       where newY = ymax - (15*(div (ymax-y) 15))
-
+-- desenha o mapa dado, desenhando da esquerda para a direita e depois de cima para baixo, consoante os offsets dados
 getPictures :: [Picture] -> (Float,Float,Float) -> Mapa -> [Picture] -- offset xmax, valor com acumulador, offset altura
 getPictures _ _ [] = [Blank] -- é preciso o blank??
 getPictures pics@[brick, crate, door] (x,_,y) ([]:mapa) = getPictures pics (x,x,y-64) mapa -- reset x, go down a line
@@ -153,8 +154,13 @@ getPictures pics@[brick, crate, door] (x,x2,y) ((peca:linha):mapa)
     | otherwise = getPictures pics (x,x2+64,y) (linha:mapa)
 
 eventListener :: Event -> Estado -> Estado
--- chave de reset global
+-- esta secção são comandos debug ou reset
 eventListener (EventKey (SpecialKey KeyTab) Down _ _) (_, pic, _, _, _, _) = estadoBase pic (Menu infoMenu)
+eventListener (EventKey (SpecialKey KeyF1) Down _ _) (_, pic, _, _, _, _) = estadoBase pic (Play 1)
+eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _, _, _, _) = (Jogo [] (Jogador (0,0) Este False),pic,(0,0), 0, MapEdit ((-13,-7),(0,0),Bloco,(None,None)),0)
+eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _, _, _, _) = (Jogo tallMap (Jogador (0,28) Este False), pic, (0,0), 0, Play 0, 0)
+eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, coords, mov, gm, sec) = estadoBase pic gm
+eventListener (EventKey (SpecialKey KeyF5) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, coords, mov, gm, sec) = (Jogo mapa (Jogador pos dir (not caixa)), pic, coords, mov, gm, sec)
 
 -- MapEditor (tecla pressionada)
 eventListener (EventKey key Down _ _) (Jogo mapa (jogador@(Jogador (x,y) dir caixa)), pic, coords, mov, m@(MapEdit ((x1,y1), (x2,y2), peca, states)), sec) 
@@ -212,7 +218,7 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, coords, mov, gamemode, sec) 
      Menu (lista,atual) -> 
         let novoEstado | atual == New = estadoBase pic (Play 1) -- DEBUG
                     -- | atual == Continue = ( ...)
-                       | atual == MapEditS = (Jogo [] (Jogador (0,0) Este False),pic,coords, 0, MapEdit ((0,0),(0,0),Bloco,(None,None)),0)
+                       | atual == MapEditS = (Jogo [] (Jogador (0,0) Este False),pic,coords, 0, MapEdit ((-13,-7),(0,0),Bloco,(None,None)),0)
                        | otherwise = e in
         if key == SpecialKey KeyEnter 
         then novoEstado
@@ -223,9 +229,6 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, coords, mov, gamemode, sec) 
                     | key == SpecialKey KeyRight = moveJogador jogo AndarDireita
                     | otherwise = jogo
 
-eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, coords, mov, gm, sec) = estadoBase pic gm
--- debug, toggle do bool da caixa do jogador
-eventListener (EventKey (SpecialKey KeyF1) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, coords, mov, gm, sec) = (Jogo mapa (Jogador pos dir (not caixa)), pic, coords, mov, gm, sec)
 eventListener _ s = s
 
 step :: Float -> Estado -> Estado
@@ -263,7 +266,6 @@ convertLikeaBish :: (Int,Int) -> [(Int,Int,MenuStates)] -> MenuStates
 convertLikeaBish (x,y) [] = Normal
 convertLikeaBish (x,y) ((a,b,c):t) | (a,b) == (x,y) = c
                                     | otherwise = convertLikeaBish (x,y) t
-
 
 main :: IO()
 main = do

@@ -23,7 +23,7 @@ instance Show Jogo where
 
 -- * Funções utilizadas
 
-{- | Aplica 'jogoToTextAux' a cada linha, recursivamente, adicionando ao fim da linha "\n".
+{- | Aplica 'jogoToTextAux' a cada linha, adicionando ao fim da linha "\\n".
 
 Quando o mapa tiver apenas uma lista, não adiciona "\\n" para que não fique no final da expressão
 
