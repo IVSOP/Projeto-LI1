@@ -131,7 +131,7 @@ testsT2 = TestList ["Valida construção do mapa da figura 6" ~: constroiMapa ma
                     "Tarefa 2 - Constroi mapa com pecas desordenadas" ~: constroiMapa map2'1 ~=? map2'1r,
                     "Tarefa 2 - Desconstroi mapa2'1" ~: sort (desconstroiMapa map2'1r) ~=? sort (map2'1)]
 
-testsT3 = TestList ["Valida tarefa 3 (o HUnit espera um resultado diferente do pedido???)" ~: show (Jogo map1result j1) ~=? showresult]
+testsT3 = TestList ["Valida tarefa 3" ~: show (Jogo map1result j1) ~=? showresult]
 
 testsT4 = TestList ["Valida tarefa 4" ~: correrMovimentos (Jogo map2 j2) movementListM2J2 ~=? resultT4,
                     "Tarefa 4 - Lista de movimentos nula" ~: correrMovimentos resultT4 [] ~=? resultT4,

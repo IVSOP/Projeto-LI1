@@ -28,6 +28,8 @@ data PontosCardeais
  | SE -- ^ Sudeste
    deriving (Show, Eq, Read)
 
+
+
 -- * Funções Principais
 
 {- | Corre um único movimento, devolvendo o jogo no estado após esse movimento. 
@@ -36,23 +38,38 @@ Estuda vários critérios, desenvolvidos nas funções 'andar','trepar','largarC
 
 -} 
 
-moveJogador :: Jogo -> Movimento -> Jogo
-moveJogador jogo@(Jogo mapa (Jogador coord dir caixa)) movimento
-    | movimento == Trepar = Jogo mapa (Jogador (trepar jogo movimento) dir caixa)
-    | movimento == InterageCaixa = 
-        case caixa of True -> largarCaixa jogo
-                      False -> pegarCaixa jogo (mapAround mapa coord)
-    | movimento == AndarEsquerda = Jogo mapa (Jogador (andar jogo movimento) Oeste caixa) -- estes dois casos sao necessarios para garantir que se troca de direcao sempre
-    | movimento == AndarDireita = Jogo mapa (Jogador (andar jogo movimento) Este caixa)
+moveJogador :: Jogo -> Movimento -> Jogo -- para corresponder ao tipo pedido no enunciado, esta função chama apenas uma função auxiliar que recebe vários valores.
+moveJogador j@(Jogo m p) mov = moveJogadorAux j mov (xMax2 m) 
+
+moveJogadorAux :: Jogo -> Movimento -> Int -> Jogo
+moveJogadorAux jogo@(Jogo mapa (Jogador (x,y) dir caixa)) movimento xM = case movimento of   --situações em que o jogador está em extremos do mapa
+    Trepar  | y == 0 -> jogo
+            | (x == 0 && dir == Oeste) || (x == xM && dir == Este) -> jogo
+            | otherwise -> Jogo mapa (Jogador (trepar jogo movimento) dir caixa)
+
+    InterageCaixa   | caixa == False && y == 0 -> jogo
+                    | caixa == False && ((x == 0 && dir == Oeste) || (x == xM && dir == Este)) -> jogo
+                    | caixa == True && ((x == 0 && dir == Oeste) || (x == xM && dir == Este)) -> jogo
+                    | caixa == True -> largarCaixa jogo
+                    | caixa == False -> pegarCaixa jogo 
+
+    AndarEsquerda   | x == 0 -> Jogo mapa (Jogador (x,y) Oeste caixa)
+                    | otherwise -> Jogo mapa (Jogador (andar jogo movimento) Oeste caixa) -- este caso é necessario para garantir que se troca de direcao sempre. O mesmo acontece para AndarDireita.
+
+    AndarDireita    | x == xM -> Jogo mapa (Jogador (x,y) Este caixa)                   
+                    | otherwise -> Jogo mapa (Jogador (andar jogo movimento) Este caixa)
 
 {- | Corre uma lista de movimentos, devolvendo o jogo no estado após esses movimentos.
 
-Chama recursivamente a função 'moveJogador'.
+Chama recursivamente a função 'moveJogadorAux'.
 
 -}
 correrMovimentos :: Jogo -> [Movimento] -> Jogo
 correrMovimentos j [] = j
-correrMovimentos jogo (mov:l) = correrMovimentos (moveJogador jogo mov) l
+correrMovimentos j@(Jogo m p) movs = correrMovimentosAux j movs (xMax2 m)  -- os casos de extremos do mapa passam para a função correr movimentos, senão tem que estar sempre a calcular o mesmo xMax.
+
+correrMovimentosAux :: Jogo -> [Movimento] -> Int -> Jogo
+correrMovimentosAux j@(Jogo m p) (mov:l) xM = correrMovimentos (moveJogadorAux j mov xM) l
 
 -- * Funções auxiliares
 
@@ -80,6 +97,15 @@ mapAround m (x,y) = mapAroundAux m (x,y) (x-1,y-1)
                                                 | abs (y1-y2) > 1 = []
                                                 | abs (x1-x2) > 1 = mapAroundAux m player (x1-1,y2+1)
                                                 | otherwise = ((m !! y2) !! x2 ) : mapAroundAux m player (x2+1,y2)
+
+mapAround2 :: Mapa -- ^ Mapa original
+    -> Coordenadas -- ^ Coordenadas do jogador no mapa
+    -> [Peca]
+mapAround2 m (x,y) = peca1linhaCima:peca2linhaCima:peca3linhaCima:peca1linhaFoco:peca2linhaFoco:peca1linhaBaixo:peca2linhaBaixo:[peca3linhaBaixo]
+    where (mapaAntes, linhaAntes:linhaFoco:linhaDepois:mapaDepois) = splitAt (y-1) m 
+          (antesnaLinhaCima, peca1linhaCima:peca2linhaCima:peca3linhaCima:depoisNaLinhaCima) = splitAt (x-1) linhaAntes
+          (antesnaLinhaFoco, peca1linhaFoco:pecaJogador:peca2linhaFoco:depoisNaLinhaFoco) = splitAt (x-1) linhaFoco -- ignora-se a peça em que o jogador está (já se sabe que é vazio)
+          (antesnaLinhaBaixo, peca1linhaBaixo:peca2linhaBaixo:peca3linhaBaixo:depoisNaLinhaBaixo) = splitAt (x-1) linhaDepois
 
 {- | Testa se um bloco numa posição cardeal relativa ao jogador é bloco ou caixa.
 
@@ -110,6 +136,11 @@ isBlockorBox direcao l = case direcao of
                                 SO -> (l !! 5) == Bloco || (l!! 5) == Caixa
                                 S  -> (l !! 6) == Bloco || (l!! 6) == Caixa
                                 SE -> last l == Bloco || last l == Caixa
+
+-- | Dada uma lista de peças (sem coordenadas), devolve o índice maximo de coluna (valor x) da lista.
+
+xMax2 :: [[Peca]] -> Int 
+xMax2 (h:t) = (length h) -1
 
 -- ** Critério andar para a esquerda e direita
 
@@ -249,7 +280,7 @@ interageCaixa _ = undefined
 
 {- | Quando o jogador não segura uma caixa, 'pegarCaixa' testa a possiblidade de pegar numa caixa (e consequentemente removê-la do mapa).
 
-Verifica simultaneamente se existe uma caixa na posição à frente do jogador e, caso haja, verifica se nenhuma caixa ou bloco se encontra por cima dela.
+Verifica simultaneamente se existe um bloco acima do jogador; se existe uma caixa na posição à frente do jogador e, caso haja, verifica se nenhuma caixa ou bloco se encontra por cima dela.
 
 Impede o jogador de pegar em caixas quando existem objetos em cima da caixa ou do jogador.
 
@@ -270,21 +301,25 @@ XXX    XXXXXX
 -}
 
 pegarCaixa  :: Jogo -- ^ Mapa e caraterísticas do jogador.
-    -> [Peca] -- ^ Lista com as peças que rodeiam o jogador (obtido de 'mapAround').
     -> Jogo
-pegarCaixa j@(Jogo m (Jogador (x,y) direc _)) circle | isBlockorBox N circle = j
-pegarCaixa j@(Jogo m (Jogador (x,y) direc _)) circle = case direc of 
-    Oeste   | (circle !! 3) == Caixa && not(isBlockorBox NO circle) -> (Jogo (mapaAntes ++ [antesNaLinha ++ [Vazio] ++ depoisNaLinha] ++ mapaDepois) (Jogador (x,y) direc True))
+
+pegarCaixa j@(Jogo m (Jogador (x,y) direc _)) = case direc of 
+    Oeste   | pecadoTeto == Bloco -> j
+            | pecaAntesdojogador == Caixa && pecaAntesdoTeto /= Bloco && pecaAntesdoTeto /= Caixa 
+                -> (Jogo (mapaAntes ++ [linhaAntes] ++ [antesNaLinha ++ (Vazio : pecadoJogador :[pecaDepoisdoJogador]) ++ depoisNaLinha] ++ mapaDepois) (Jogador (x,y) direc True))
             | otherwise -> j
 
-        where   (mapaAntes,linhaFoco: mapaDepois) = splitAt y m 
-                (antesNaLinha, pecaEsquerdadoJogador:depoisNaLinha) = splitAt (x-1) linhaFoco
-
-    Este    | (circle !! 4) == Caixa && not(isBlockorBox NE circle) -> (Jogo (mapaAntes ++ [antesNaLinha ++ [Vazio] ++ depoisNaLinha] ++ mapaDepois) (Jogador (x,y) direc True))
+    Este    | pecadoTeto == Bloco -> j
+            | pecaDepoisdoJogador == Caixa && pecaDepoisdoTeto /= Bloco && pecaDepoisdoTeto /= Caixa  
+                -> (Jogo (mapaAntes ++ [linhaAntes] ++ [antesNaLinha ++ (pecaAntesdojogador : pecadoJogador : [Vazio]) ++ depoisNaLinha] ++ mapaDepois) (Jogador (x,y) direc True))
             | otherwise -> j
 
-        where   (mapaAntes,linhaFoco: mapaDepois) = splitAt y m 
-                (antesNaLinha, pecaDepoisdoJogador:depoisNaLinha) = splitAt (x+1) linhaFoco
+ where   (mapaAntes,linhaAntes:linhaFoco:mapaDepois) = splitAt (y-1) m 
+         (antt,pecaAntesdoTeto:pecadoTeto:pecaDepoisdoTeto:dept) = splitAt (x-1) linhaAntes
+         (antesNaLinha,pecaAntesdojogador:pecadoJogador:pecaDepoisdoJogador:depoisNaLinha) = splitAt (x-1) linhaFoco
+
+-- Ex: (Jogo [[Vazio,Vazio,Vazio],[Vazio,Vazio,Caixa,Vazio],[Bloco,Bloco,Bloco,Bloco]] (Jogador (1,1) Este False)))
+
 
 {- | Devolve um jogo com um mapa em que foi (ou não) inserida a caixa largada pelo jogador
 

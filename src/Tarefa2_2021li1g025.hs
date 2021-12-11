@@ -34,7 +34,7 @@ import Tarefa1_2021li1g025 (yMax, xMax,validaPotencialMapa)
 
 {- | Dada uma lista de peças e respetivas coordenadas, constrói um mapa só de peças (a grelha propriamente dita), incluindo a referência a peças do tipo 'Vazio'.
 
-Só funciona se a lista de peças já tiver sido validada (cf. Tarefa 1).
+Supõe-se que a lista de peças já foi validada (cf. Tarefa 1).
 
  === Exemplo
 
@@ -45,7 +45,6 @@ Só funciona se a lista de peças já tiver sido validada (cf. Tarefa 1).
 
 constroiMapa :: [(Peca, Coordenadas)] -> Mapa
 constroiMapa [] = []
---constroiMapa l | validaPotencialMapa l == False = []
 constroiMapa l = constroiMapaAux list 0 (yMax list) (xMax l)
     where list = ordena l 
 
@@ -131,10 +130,11 @@ constroiMapaAux l yAtual yMax  xMax | yAtual == yMax = [constroiLinha a 0 yAtual
 
 {- | Ordena o mapa segundo x e y crescentes (com prioridade para y).
      Algoritmo de Insertion sort.
+     Remove declarações repetidas de um tipo de peça para a mesma coordenda.
 
 == Exemplos:
 
->>> ordena [(Caixa,(5,4)),(Porta,(7,5)),(Caixa,(4,5)),(Bloco,(1,4))]
+>>> ordena [(Caixa,(5,4)),(Porta,(7,5)),(Caixa,(4,5)),(Bloco,(1,4)),(Porta,(7,5))]
 [(Bloco,(1,4)),(Caixa,(5,4)),(Caixa,(4,5)),(Porta,(7,5))]
 
 >>> ordena []
@@ -148,7 +148,8 @@ ordena (h:t) = inserePeca h (ordena t)
 
 inserePeca :: (Peca, Coordenadas) -> [(Peca,Coordenadas)] -> [(Peca,Coordenadas)]
 inserePeca x [] = [x]
-inserePeca p1@(_,(x1,y1)) (p2@(_,(x2,y2)):t)    | y1 > y2 = p2:(inserePeca p1 t)
+inserePeca p1@(_,(x1,y1)) (p2@(_,(x2,y2)):t)    | p1 == p2 = inserePeca p1 t
+                                                | y1 > y2 = p2:(inserePeca p1 t)
                                                 | y1 < y2 = p1:p2:t
                                                 | x1 > x2 = p2:(inserePeca p1 t)
                                                 | x1 < x2 = p1:p2:t -- assume-se que nunca pode ser igual a uma peca existente
