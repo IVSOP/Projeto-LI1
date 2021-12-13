@@ -261,10 +261,10 @@ prop> Impede o jogador de trepar para espaços apertados em que o teto não perm
 
 treparcomCaixa :: Jogo -> [Peca] -> [Peca] ->  Coordenadas
 treparcomCaixa j@(Jogo m (Jogador c@(x,y) direc _)) circlejogador circlecaixa = case direc of 
-    Oeste   | isBlockorBox NO circlecaixa -> c
+    Oeste   | isBlockorBox NO circlecaixa || isBlockorBox N circlecaixa -> c
             | otherwise -> treparsemCaixa j circlejogador
 
-    Este    | isBlockorBox NE circlecaixa -> c
+    Este    | isBlockorBox NE circlecaixa || isBlockorBox N circlecaixa -> c
             | otherwise -> treparsemCaixa j circlejogador
 
 -- ** Critério InteragirCaixa

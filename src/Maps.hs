@@ -14,6 +14,10 @@ mainMenuMap =  [[Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vaz
                 [Bloco,Caixa,Caixa,Caixa,Vazio,Vazio,Vazio,Caixa,Caixa,Caixa,Vazio,Vazio,Vazio,Caixa,Caixa,Caixa,Vazio,Vazio,Vazio,Caixa,Caixa,Caixa,Bloco],
                 [Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco]]
 
+mapSelectorMap =    [[Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio,Bloco],
+                     [Bloco,Vazio,Vazio,Vazio,Porta,Vazio,Porta,Vazio,Porta,Vazio,Porta,Vazio,Porta,Vazio,Vazio,Bloco],
+                     [Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco,Bloco]]
+
 map1 = [[Bloco,Vazio,Vazio,Vazio,Vazio,Vazio,Vazio],
        [Bloco,Vazio,Vazio,Vazio,Bloco,Vazio,Vazio],
        [Bloco,Vazio,Caixa,Vazio,Bloco,Vazio,Porta],
