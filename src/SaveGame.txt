@@ -1,0 +1,1 @@
+([(Bloco,(0,0)),(Bloco,(0,1)),(Bloco,(4,1)),(Bloco,(0,2)),(Caixa,(3,2)),(Bloco,(4,2)),(Porta,(6,2)),(Bloco,(0,3)),(Bloco,(1,3)),(Bloco,(2,3)),(Bloco,(3,3)),(Bloco,(4,3)),(Bloco,(5,3)),(Bloco,(6,3))],Jogador (5,2) Este False,(1,(6,2),9.260022,16))
