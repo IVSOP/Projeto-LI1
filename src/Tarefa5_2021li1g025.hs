@@ -58,7 +58,7 @@ infoMapSelect = ([(4,1,1),(6,1,2),(8,1,3),(10,1,4),(12,1,5)],0)
 
 data Mov = U | D | L | R | None deriving (Eq,Show) -- up down left rigth
 
-type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Mov,Mov),Int,Float) -- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo, segundos passados, Int
+type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Mov,Mov),Int,Float) -- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo, Int que representa o modo, segundos passados
 
 -- TabMenu --
 
@@ -75,12 +75,12 @@ saveFile = "SaveGame.txt"
 -- offset é para que o getPictures saiba onde começar a desenhar as imagens (o mais à esquerda possível)
 draw :: Estado -> IO Picture
 -- MapEditor
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, sec, mov)) =
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, sec)) =
     -- TODO: fix background ao mostrar o mapa todo
     --Translate (-500) 200 (Pictures [Scale 0.1 0.1 (Text (show (Jogo mapa (Jogador (x,y) dir caixa)))), (Translate 0 (-150) (Scale 0.1 0.1 (Text (show (x2,y2)))))])
-    return (Scale scale scale (Pictures (snowbg:(Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
-        [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))
-    where (map2,scale) | mov == 3 = (mapa,0.25)
+    return (Pictures [snowbg, (Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
+        [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))])
+    where (map2,scale) | mode == 3 = (mapa,0.25)
                        | otherwise = (mapa,1) -- ((map (\linha -> take 20 linha) (map (\linha -> drop (x1-10) linha) mapa)),1)
           pecaPic = case peca of Bloco -> brick
                                  Caixa -> crate
@@ -104,9 +104,9 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight,
           linha1 = Line [(xline,-2400),(xline,yline)] -- números grandes para evitar que a linha não seja completa ao fazer zoom
           linha2 = Line [(xline,yline),(5400,yline)]
           outline = Color cyan (Line [(-32,-32),(32,-32),(32,32),(-32,32),(-32,-32)])
-          texto | mov == 1 = Text "Menu" -- aqui em vez de texto será a imagem do menu
-                | mov == 2 = Text ("O mapa" ++ (case validaPotencialMapa (desconstroiMapa mapa) of True -> " "
-                                                                                                   False -> " nao ") ++ "e valido")
+          texto | mode == 1 = Text "Menu" -- aqui em vez de texto será a imagem do menu
+                | mode == 2 = Text ("O mapa" ++ (case validaPotencialMapa (desconstroiMapa mapa) of True -> " "
+                                                                                                    False -> " nao ") ++ "e valido")
                 | otherwise = Blank
 
 -- Won
@@ -196,7 +196,7 @@ eventListener (EventKey (SpecialKey KeyBackspace) Down _ _) (_, pic, _) = return
 eventListener (EventKey (SpecialKey KeyF1) Down _ _) (_, pic, _) = return (estadoBase pic (Play (1,(0,0),0,0))) -- primeiro nível
 eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _) = return ((Jogo [] (Jogador (0,0) Este False), pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None),0,0))) -- editor
 eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _) = return ((Jogo tallMap (Jogador (0,28) Este False), pic, Play (0,(0,0),0,0))) -- mapa alto para testar offset verticaç
-eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm) = return (estadoBase pic gm) -- reset do nível (dá reset aos movimentos e segundos por agora) -- TODO
+eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm) = return (estadoBase pic gm) -- reset do gamemode (dá reset aos movimentos e segundos por agora) -- TODO
 eventListener (EventKey (SpecialKey KeyF5) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, gm) = return (Jogo mapa (Jogador pos dir (not caixa)), pic, gm) -- toggle da caixa do jogador
 eventListener (EventKey (Char 's') Down ctrl _) e@(Jogo mapa jogador, _, Play info) -- escrever estado Play
     = do writeFile saveFile (show ((desconstroiMapa mapa),jogador,info))
