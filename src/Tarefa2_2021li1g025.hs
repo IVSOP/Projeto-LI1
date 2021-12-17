@@ -148,7 +148,7 @@ ordena (h:t) = inserePeca h (ordena t)
 
 inserePeca :: (Peca, Coordenadas) -> [(Peca,Coordenadas)] -> [(Peca,Coordenadas)]
 inserePeca x [] = [x]
-inserePeca p1@(_,(x1,y1)) (p2@(_,(x2,y2)):t)    | p1 == p2 = inserePeca p1 t
+inserePeca p1@(_,(x1,y1)) (p2@(_,(x2,y2)):t)    | (x1,y1) == (x2,y2) = p1:t -- salvaguarda os casos em que é introduzido uma peça na mesma coordenada duas vezes, mesmo que seja diferente (prioritizando a nova). Permite nao dar erro no mapEditor. 
                                                 | y1 > y2 = p2:(inserePeca p1 t)
                                                 | y1 < y2 = p1:p2:t
                                                 | x1 > x2 = p2:(inserePeca p1 t)
