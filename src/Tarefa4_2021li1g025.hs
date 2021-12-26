@@ -44,6 +44,7 @@ moveJogador j@(Jogo m p) mov = moveJogadorAux j mov (xMax2 m)
 moveJogadorAux :: Jogo -> Movimento -> Int -> Jogo
 moveJogadorAux jogo@(Jogo mapa (Jogador (x,y) dir caixa)) movimento xM = case movimento of   --situações em que o jogador está em extremos do mapa
     Trepar  | y == 0 -> jogo
+            | y == 1 && caixa == True -> jogo
             | (x == 0 && dir == Oeste) || (x == xM && dir == Este) -> jogo
             | otherwise -> Jogo mapa (Jogador (trepar jogo movimento) dir caixa)
 

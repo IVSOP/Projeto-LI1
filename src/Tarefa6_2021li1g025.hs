@@ -5,7 +5,7 @@ import Maps
 import Tarefa4_2021li1g025
 import Tarefa2_2021li1g025
 
-maps1 = [(Jogo map1 (Jogador (1,2) Este False)),(Jogo map2 (Jogador (1,3) Este False)),(Jogo map3 (Jogador (1,1) Este False)),(Jogo map4 (Jogador (1,1) Este False)), (Jogo hugeMap (Jogador (1,9) Este False))]
+maps1 = [(Jogo map1 (Jogador (1,2) Este False)),(Jogo map2 (Jogador (1,3) Este False)),(Jogo map3 (Jogador (1,1) Este False)),(Jogo map4 (Jogador (1,1) Este False)), (Jogo map5 (Jogador (1,9) Este False)), (Jogo map6 (Jogador (6,3) Oeste False)), (Jogo map7 (Jogador (12,14) Este False))]
 
 data MTree a = Empty 
                 | Node a (MTree a) (MTree a) (MTree a) (MTree a) -- árvore em que cada node é pai de quatro nodes que contêm movimentos possíveis. Por ordem: InterageCaixa, AndarEsquerda,AndarDireita,Trepar.
@@ -18,8 +18,9 @@ type CordsPorta = (Int,Int)
 
 --TODO : testar se a função é mais eficiente se receber [Movimento] ou converter [Int]
 resolveJogo :: Int -> Jogo -> Maybe [Movimento]
-resolveJogo 0 _ = Just []
-resolveJogo n j@(Jogo m player) = fmap decode numberseq -- permite retornar 'Nothing' ou fazer a tradução de 'Just [Int]' com 'decode' dependendo do resultado de numberseq
+resolveJogo 0 j@(Jogo m player@(Jogador cords _ _)) | (portaFinder (desconstroiMapa m)) == cords = Just []
+                                                    | otherwise =  Nothing
+resolveJogo n j@(Jogo m _) = fmap decode numberseq -- permite retornar 'Nothing' ou fazer a tradução de 'Just [Int]' com 'decode' dependendo do resultado de numberseq
     where numberseq = (sequenceBuilder (n+1) (portaFinder (desconstroiMapa m)) [(Node (j,[]) Empty Empty Empty Empty)] [] [])
 
 -- A maneira mais eficiente de inverter o resultado obtido de sequenceBuilder parece ser reverter o resultado final de dec
@@ -53,6 +54,7 @@ newDepth (h:t) prevjogos = filter (/= Empty) (a:b:c:d:rest)
 
 -- adiciona um de profunidade a folhas de uma árvore
 addDepth :: MTree (Jogo,[Int]) -> [Jogo] -> MTree (Jogo,[Int])
+addDepth Empty _ = Empty                                                                -- necessário?
 addDepth (Node i@(jogoresult,moves) Empty Empty Empty Empty) prevjogos =  Node i a b c d
 
             where   a = if elem (moveJogador jogoresult InterageCaixa)  prevjogos
@@ -80,3 +82,9 @@ saveGames x l = if x `elem` l then l else (x:l)
 -- encontra as coordenadas da porta de um jogo (para usar na função sequenceBuilder)
 portaFinder :: [(Peca,Coordenadas)] -> CordsPorta
 portaFinder l@(h@(p,cords):t) = if p == Porta then cords else portaFinder t 
+
+
+
+
+
+
