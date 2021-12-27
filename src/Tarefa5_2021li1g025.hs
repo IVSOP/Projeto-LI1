@@ -77,15 +77,25 @@ fr = 50
 
 saveFile = "SaveGame.txt"
 
+savePlay :: String -> IO ()
+savePlay str = do savedata <- readFile saveFile
+                  let contents = tail (lines savedata) -- para não apagar os dados do mapeditor
+                  putStrLn (concat contents) -- para evitar conflito read e write
+                  writeFile saveFile (unlines (str:contents))
+
 -- offset é para que o getPictures saiba onde começar a desenhar as imagens (o mais à esquerda possível)
 draw :: Estado -> IO Picture
+-- MapEditor transferido para play (se mode == 3)
+draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec)) =
+    draw (jogo, pics, Play (-1,(-1,-1),-1,-1))
+
 -- MapEditor
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, sec)) =
     -- TODO: fix background ao mostrar o mapa todo
     --Translate (-500) 200 (Pictures [Scale 0.1 0.1 (Text (show (Jogo mapa (Jogador (x,y) dir caixa)))), (Translate 0 (-150) (Scale 0.1 0.1 (Text (show (x2,y2)))))])
     return (Pictures [snowbg, (Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
         [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))])
-    where (map2,scale) | mode == 3 = (mapa,0.25)
+    where (map2,scale) | mode == 2 = (mapa,0.25)
                        | otherwise = (mapa,1) -- ((map (\linha -> take 20 linha) (map (\linha -> drop (x1-10) linha) mapa)),1)
           pecaPic = case peca of Bloco -> brick
                                  Caixa -> crate
@@ -109,8 +119,7 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight,
           linha1 = Line [(xline,-2400),(xline,yline)] -- números grandes para evitar que a linha não seja completa ao fazer zoom
           linha2 = Line [(xline,yline),(5400,yline)]
           outline = Color cyan (Line [(-32,-32),(32,-32),(32,32),(-32,32),(-32,-32)])
-          texto | mode == 1 = Text "Menu" -- aqui em vez de texto será a imagem do menu
-                | mode == 2 = Text ("O mapa" ++ (case validaPotencialMapa (desconstroiMapa mapa) of True -> " "
+          texto | mode == 1 = Text ("O mapa" ++ (case validaPotencialMapa (desconstroiMapa mapa) of True -> " "
                                                                                                     False -> " nao ") ++ "e valido")
                 | otherwise = Blank
 
@@ -140,12 +149,12 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           
 -- Play, Menu, Map Selector e Solver
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), gamemode)
-    | xmax <= 21 = let offset = getOffset mapa
+    | xmax <= 20 = let offset = getOffset mapa
                        map3 = getLines y mapa
                        offsetY = getOffsetY map3 in -- scrolling desnecessário para mapas pequenos, temos de centrar o mapa consoante xmax
         return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate ((xf*64)+offset) ((-y2*64)+offsetY) picFinal]))
 
-    | x <= 11 = let map2 = map (\linha -> take 21 linha) mapa
+    | x <= 10 = let map2 = map (\linha -> take 20 linha) mapa
                     map3 = getLines y map2
                     offsetY = getOffsetY map3 in
         return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate ((xf*64)+offset) (((-y2*64))+offsetY) picFinal]))
@@ -154,7 +163,7 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
                               map2 = map (\linha -> drop wallDistance linha) mapa
                               x2 = (xf-(fromIntegral wallDistance)) -- converte coordenadas do jogador em coordenadas no ecrã
                               map3 = getLines y map2
-                              offsetY = getOffsetY map3 in 
+                              offsetY = getOffsetY map3 in
         --debug Scale 0.1 0.1 (Text (show map2))
         return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate ((x2*64)+offset) (((-y2*64))+offsetY) picFinal]))
     
@@ -162,12 +171,12 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
                       map3 = (map (\linha -> take 20 linha) (map (\linha -> drop (x-10) linha) map2))
                       offset = getOffset map3
                       offsetY = getOffsetY map3 in
-        return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate 0 (((-y2*64))+offsetY) picFinal]))
+        return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate (-32) (((-y2*64))+offsetY) picFinal]))
 
     where xmax = fromIntegral (length (head mapa))
           ymax = (length mapa)-1 -- +1 que o valor maximo de y
           getOffset :: Mapa -> Float -- assume se que o mapa já só tem 20 blocos de comprimento
-          getOffset map3 = (-64)*((fromIntegral (length (head map3)))/2)
+          getOffset map3 = ((-64)*((fromIntegral (length (head map3)))/2))-32
           offset = -640
           xf = fromIntegral x
           yf = fromIntegral y
@@ -186,9 +195,9 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           getOffsetY :: Mapa -> Float
           getOffsetY map3 = ((64)*((ymax2/2))-64)
                           where ymax2 = fromIntegral (length map3)
-          y2 = fromIntegral (y-(15*(div y 15)))
+          y2 = fromIntegral (mod y 15) -- (y-(15*(div y 15)))
           getLines :: Int -> Mapa -> Mapa -- devolve linhas do mapa a renderizar consoante altura do jogador
-          getLines y l = drop (15*(section-1)) (take (15*section) l)
+          getLines y l = drop (15*(section-1)) (take ((15*section)+1) l)
                        where section = (div y 15)+1
 
 -- desenha o mapa dado, desenhando da esquerda para a direita e depois de cima para baixo, consoante os offsets dados
@@ -202,26 +211,41 @@ getPictures pics@[brick, crate, door] (x,x2,y) ((peca:linha):mapa)
     | otherwise = getPictures pics (x,x2+64,y) (linha:mapa)
 
 eventListener :: Event -> Estado -> IO Estado
-
 -- esta secção são comandos debug ou reset
 eventListener (EventKey (SpecialKey KeyEsc) Down _ _) _ = do exitSuccess -- comando para exit temporário
 eventListener (EventKey (SpecialKey KeyBackspace) Down _ _) (_, pic, _) = return (estadoBase pic (Menu infoMenu))
 eventListener (EventKey (SpecialKey KeyF1) Down _ _) (_, pic, _) = return (estadoBase pic (Play (1,(0,0),0,0))) -- primeiro nível
 eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _) = return ((Jogo [] (Jogador (0,0) Este False), pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None),0,0))) -- editor
 eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _) = return ((Jogo stairMap (Jogador (0,28) Este False), pic, Play (0,(0,0),0,0))) -- mapa alto para testar offset vertical
-eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm) = return (estadoBase pic gm) -- reset do gamemode (dá reset aos movimentos e segundos por agora) -- TODO
 eventListener (EventKey (SpecialKey KeyF5) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, gm) = return (Jogo mapa (Jogador pos dir (not caixa)), pic, gm) -- toggle da caixa do jogador
-eventListener (EventKey (Char 's') Down ctrl _) e@(Jogo mapa jogador, _, Play info) -- escrever estado Play
-    = do writeFile saveFile (show ((desconstroiMapa mapa),jogador,info))
+
+-- Quick save e load no Play
+eventListener (EventKey (Char 's') Down _ _) e@(Jogo mapa jogador, _, Play info) -- escrever estado Play
+    = do let str = show ((desconstroiMapa mapa),jogador,info)
+         savePlay str
          return e
-eventListener (EventKey (Char 'l') Down ctrl _) (_, pic, _) -- carregar estado play (ctrl + l)
+eventListener (EventKey (Char 'l') Down _ _) (_, pic, _) -- carregar estado play
     = do texto <- readFile saveFile
          let (mapa,jogador,info) = read texto
          return (Jogo (constroiMapa mapa) jogador, pic, Play info)
 
+-- reset do gamemode
+eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play _)) = do savedata <- readFile saveFile
+                                                                           let (_,_,info) = read (head (lines savedata))::([(Peca,(Int,Int))],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
+                                                                               (jogo,_,_) = estadoBase pic gm
+                                                                           return (jogo,pic,Play info)
+--eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, Won _) = return (estadoBase pic (Play (1,(0,0),0,0)))
+eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm) = return (estadoBase pic gm)
 
 -- Won (basta carregar em qualquer tecla)
 eventListener (EventKey _ Down _ _) (_, pic, Won _) = return (estadoBase pic (Menu infoMenu))
+
+-- MapEditor (mode == 3, jogar o mapa, usa o Play para permitir jogar)
+eventListener keyinfo@(EventKey key Down _ _) (jogo, pic, m@(MapEdit (c1, c2, peca, states, 3, sec))) =
+    case key of SpecialKey KeyTab -> undefined -- TODO
+                Char 'p' -> return (jogo, pic, MapEdit (c1,c2,peca,states,0,sec))
+                _ -> do (jogo2,_,_) <- eventListener keyinfo (jogo, pic, Play (-1,(-1,-1),-1,-1)) -- numeros que não irão dar conflito
+                        return (jogo2,pic,m)
 
 -- TabMenu e Solver
 eventListener (EventKey (SpecialKey KeyTab) Down _ _) e@(jogo, pics, gm) = return $ case gm of -- para entrar e sair do estado TabMenu
@@ -330,9 +354,9 @@ eventListener (EventKey key Down _ _) (Jogo mapa (jogador@(Jogador (x,y) dir cai
                 | key == Char '2' = Caixa
                 | key == Char '3' = Porta
                 | otherwise = peca 
-          mode2 | key == Char 'm' = if mode == 1 then 0 else 1 
-                | key == Char 'v'= if mode == 2 then 0 else 2
-                | key == SpecialKey KeySpace = if mode == 3 then 0 else 3
+          mode2 | key == Char 'v'= if mode == 1 then 0 else 1
+                | key == SpecialKey KeySpace = if mode == 2 then 0 else 2
+                | key == Char 'p' = if mode == 3 then 0 else 3
                 | otherwise = mode
           adicionaMapa :: Mapa
           adicionaMapa | newMap /= [] = constroiMapa newMap
@@ -357,19 +381,28 @@ eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca,
                  | key == SpecialKey KeyRight = None
                  | otherwise = state2
 
+-- Menu
+eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
+    | key /= SpecialKey KeyEnter = return (jogo2, pic, Menu (lista,atual))
+    | atual == New = do let (Jogo mapa jogador,coords) = jogoInicial 1
+                            str = show ((desconstroiMapa mapa),jogador,(1,coords,0,0))
+                        savePlay str
+                        return (estadoBase pic (Play (1,(0,0),0,0)))
+    | atual == Continue = return (estadoBase pic (MapSelector infoMapSelect))
+    | atual == MapEdit1 = return (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None),0,0))
+    | otherwise = return e
+    
 
--- Menu, map selector e Play
+
+    where jogo2 | key == SpecialKey KeyUp = moveJogador jogo Trepar
+                | key == SpecialKey KeyDown = moveJogador jogo InterageCaixa
+                | key == SpecialKey KeyLeft = moveJogador jogo AndarEsquerda
+                | key == SpecialKey KeyRight = moveJogador jogo AndarDireita
+                | otherwise = jogo
+
+-- Map selector e Play
 eventListener (EventKey key Down _ _) e@(jogo, pic, gamemode) = case gamemode of 
-
         Play (mapa,coords,sec,mov) -> return (jogo2, pic, Play (mapa,coords,sec,mov+1))
-        Menu (lista,atual) -> 
-            let novoEstado1 | atual == New = (estadoBase pic (Play (1,(0,0),0,0))) 
-                            | atual == Continue = (estadoBase pic (MapSelector infoMapSelect))
-                            | atual == MapEdit1 = (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None),0,0))
-                            | otherwise = e
-            in  if key == SpecialKey KeyEnter
-                then return novoEstado1
-                else return (jogo2, pic, Menu (lista,atual)) 
         MapSelector (lista,atual) -> 
             let novoEstado2 | atual == 0 =  e
                             | otherwise = (estadoBase pic (Play (atual,(0,0),0,0)))
@@ -385,13 +418,16 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, gamemode) = case gamemode of
 
 eventListener _ s = return s
 
---Jogo
 step :: Float -> Estado -> IO Estado
+--Play
 step time (jogo@(Jogo _ (Jogador (x,y) _ _)), pic, Play (n,coords,sec,mov))
     | (x,y) == coords =
         if n == numeroMapas
         then return (jogo, pic, Won (mov,sec))
-        else let (jogo2,coords2) = jogoInicial (n+1) in return (jogo2, pic, Play (n+1,coords2,sec+time,mov))
+        else do let (jogo2@(Jogo mapa jogador),coords2) = jogoInicial (n+1)
+                    str = show ((desconstroiMapa mapa),jogador,(n+1,coords2,sec+time,mov))
+                savePlay str
+                return (jogo2, pic, Play (n+1,coords2,sec+time,mov))
     | otherwise = return (jogo, pic, Play (n,coords,sec+time,mov))
 
 --Map edit
@@ -464,7 +500,6 @@ main = do
     Just snowbg <- loadJuicy "snow.png"
     Just grassbg <- loadJuicy "greenfields.png"
     Just sandbg <- loadJuicy "sand.png"
-    text <- readFile saveFile
     playIO window
            (white)
            fr
