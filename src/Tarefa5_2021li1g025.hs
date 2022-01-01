@@ -126,7 +126,7 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight,
 -- Won
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), Pictures pics, Won (mov,sec)) =
     return (Pictures [bg, Translate (-200) 0 (Scale 0.5 0.5 (Pictures [Text "You Won!!!", Translate 0 (-120) (Text ("Movements: " ++ (show mov))), Translate 0 (-250) (Text ("In " ++ show (round sec) ++ " seconds"))]))]) -- jogador chegou à porta final
-    where bg = pics !! 8
+    where bg = pics !! 13
 
 -- TabMenu
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), (TabMenu (posMenu,e2@(_,_,gm)))) = 
@@ -463,12 +463,12 @@ step time (jogo@(Jogo _ (Jogador (x,y) _ _)), pic, MapSelector (lista,antigo)) =
 step time e@(jogo, pic, Solver ((prevE, solution, movelist,choice,sec),2)) = 
     return $ case solution of  -- prevE será sempre tabMenu porque o Solver é aberto no tabMenu
                 Nothing -> (jogo,pic,TabMenu (1,(jogo, pic, Solver ((prevE, Nothing, Nothing ,choice,0),4)))) -- os valores dentro de Solver são na maioria arbitrários (_,4)
-                Just l  | null l -> (jogo,pic,TabMenu (1,(jogo, pic, Solver ((prevE, Nothing, movelist,choice,0),3)))) -- quando a lista de movimentos terminar, ou seja, o jogador chegar à porta, retorna o jogador para o jogo antes de clicar no menu
-                        | otherwise ->  if timeBetweenMoves /= 0 
+                Just l  | null l -> (jogo,pic,TabMenu (1,(jogo, pic, Solver ((prevE, Nothing, movelist,choice,0),3)))) -- quando a lista de movimentos terminar, ou seja, o jogador chegar à porta, retorna o jogador para o menu antes de abrir o solver
+                        | otherwise ->  if timeBetweenMoves <= 450
                                         then (jogo, pic, Solver ((prevE, Just l, movelist,choice,sec+time),2))
-                                        else (jogo2, pic, Solver ((prevE, Just (tail l),movelist,choice,sec+time),2))
+                                        else (jogo2, pic, Solver ((prevE, Just (tail l),movelist,choice,0),2))
                     where jogo2 = moveJogador jogo (head l)
-                          timeBetweenMoves = mod (round (sec*1000)) 700 -- os movimentos serão efetuados a cada 750 milissegundos
+                          timeBetweenMoves = mod (round (sec*1000)) 700 -- os movimentos serão efetuados a cada 650 milissegundos
 
 -- Para outras situações
 step _ e = return e

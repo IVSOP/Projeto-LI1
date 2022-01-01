@@ -5,7 +5,7 @@ import Maps
 import Tarefa4_2021li1g025
 import Tarefa2_2021li1g025
 
-maps1 = [(Jogo map1 (Jogador (1,2) Este False)),(Jogo map2 (Jogador (1,3) Este False)),(Jogo map3 (Jogador (1,1) Este False)),(Jogo map4 (Jogador (1,1) Este False)), (Jogo map5 (Jogador (1,9) Este False)), (Jogo map6 (Jogador (6,3) Oeste False)), (Jogo map7 (Jogador (12,14) Este False))]
+maps1 = [(Jogo map1 (Jogador (1,2) Este False)),(Jogo map2 (Jogador (1,3) Este False)),(Jogo map3 (Jogador (1,1) Este False)),(Jogo map4 (Jogador (1,1) Este False)), (Jogo map5 (Jogador (1,9) Este False)), (Jogo map6 (Jogador (6,3) Oeste False)), (Jogo map7 (Jogador (12,13) Este False))]
 
 data MTree a = Empty 
                 | Node a (MTree a) (MTree a) (MTree a) (MTree a) -- árvore em que cada node é pai de quatro nodes que contêm movimentos possíveis. Por ordem: InterageCaixa, AndarEsquerda,AndarDireita,Trepar.
