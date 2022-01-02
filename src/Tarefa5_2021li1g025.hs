@@ -1,3 +1,12 @@
+{- |
+Module      : Tarefa5_2021li1g025
+Description : Interface gráfica do jogo
+Copyright   : Pedro Miguel Meruge Ferreira <a100709@alunos.uminho.pt>;
+            : Ivan Sérgio Rocha Ribeiro <a100538@alunos.uminho.pt>;
+
+Módulo para a realização da Tarefa 5 do projeto de LI1 em 2021/22.
+-}
+
 module Main where
 
 import Tarefa6_2021li1g025
@@ -11,6 +20,7 @@ import Graphics.Gloss.Juicy (loadJuicy)
 import LI12122
 import System.Exit
 import System.IO
+import System.IO.Error
 
 -- este jogo inicial não é o jogo inicial absoluto, mas sim o de cada mapa. o mesmo acontece com o estadoBase
 jogoInicial :: Int -> (Jogo,(Int,Int))
@@ -57,9 +67,9 @@ infoMapSelect = ([(4,4,1),(6,4,2),(8,4,3),(10,4,4),(12,4,5),(21,1,6),(23,1,7),(2
 
 -- Map editor -- 
 
-data Mov = U | D | L | R | None deriving (Eq,Show) -- up down left rigth
+data Action = U | D | L | R | Del | Ent | None deriving (Eq,Show) -- up down left rigth delete enter
 
-type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Mov,Mov),Int,Float) -- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo, Int que representa o modo, segundos passados
+type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Action,Action,Action),Int,Float) -- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo, Int que representa o modo, segundos passados
 
 -- TabMenu --
 
@@ -75,16 +85,19 @@ window = FullScreen
 fr :: Int
 fr = 50
 
--- grava no final do ficheiro
-appendSaveGame :: String -- nome do ficheiro
-    -> String -- string a gravar
+-- | Escreve uma string no final do ficheiro
+appendSaveGame :: String -- ^ nome do ficheiro
+    -> String -- ^ string a gravar
     -> IO ()
 appendSaveGame file s = appendFile file s 
 
--- grava numa dada linha, se o ficheiro não tiver as linhas necessárias vai preencher com linhas vazias
-saveGame :: String -- nome do ficheiro
-    -> String -- string a gravar
-    -> Int -- numero da linha a gravar (a primeira linha é a 0)
+{- | Escreve numa dada linha de um ficheiro (começando na linha 0)
+
+Se o ficheiro não tiver as linhas necessárias irá ser preenchido com linhas vazias
+-}
+saveGame :: String -- ^ nome do ficheiro
+    -> String -- ^ string a gravar
+    -> Int -- ^ numero da linha a gravar (a primeira linha é a 0)
     -> IO ()
 saveGame file str n = do savedata <- readFile file
                          let l = lines (savedata)
@@ -94,6 +107,17 @@ saveGame file str n = do savedata <- readFile file
                          else do let (a,b) = splitAt n l
                                  writeFile file (unlines (a ++ (str:(tail b))))
 
+adicionaMapa :: (Int,Int) -> Peca -> Mapa -> Mapa
+adicionaMapa (x,y) peca mapa | x < 0 || y < 0 = mapa
+                             | newMap /= [] = constroiMapa newMap
+                             | otherwise = mapa 
+                             where newMap = ((peca,(x,y)):(desconstroiMapa mapa))
+deleteMapa :: (Int,Int) -> Mapa -> Mapa
+deleteMapa (x,y) mapa | x < 0 || y < 0 = mapa
+                      | newMap /= [] = constroiMapa newMap
+                      | otherwise = mapa
+                      where newMap = (filter (\(p,c) -> c /= (x,y)) (desconstroiMapa mapa))
+
 -- offset é para que o getPictures saiba onde começar a desenhar as imagens (o mais à esquerda possível)
 draw :: Estado -> IO Picture
 -- MapEditor transferido para play (se mode == 3)
@@ -101,7 +125,7 @@ draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec)) =
     draw (jogo, pics, Play (-1,(-1,-1),-1,-1))
 
 -- MapEditor
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, sec)) =
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _)) =
     --Translate (-500) 200 (Pictures [Scale 0.1 0.1 (Text (show (Jogo mapa (Jogador (x,y) dir caixa)))), (Translate 0 (-150) (Scale 0.1 0.1 (Text (show (x2,y2)))))])
     return (Pictures [snowbg, (Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
         [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))])
@@ -214,8 +238,20 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           getLines y l = drop (15*(section-1)) (take ((15*section)+1) l)
                        where section = (div y 15)+1
 
--- desenha o mapa dado, desenhando da esquerda para a direita e depois de cima para baixo, consoante os offsets dados
-getPictures :: [Picture] -> (Float,Float,Float) -> Mapa -> [Picture] -- offset xmax, valor com acumulador, offset altura
+{- | Transforma o mapa dado numa lista de imagens
+
+Esta começa a desenhar as peças aplicando-lhes uma translação Translate (offset x) (offset y), de seguida somando ao acumulador 64 (comprimento da peça)
+
+Ao chegar ao fim de uma linha, é subtraído 64 ao offset vertical e o acumulador é reiniciado
+
+Assim, as peças são desenhadas da esquerda para a direita até ao fim da linha, e de seguida de cima para baixo
+
+O valor inicial do acumulador deve ser o mesmo do que o do offset horizontal
+-}
+getPictures :: [Picture] -- ^ Imagens a ser utilizadas (bloco, caixa, porta)
+    -> (Float,Float,Float) -- ^ Offsets (horizontal, acumulador do horizontal, vertical)
+    -> Mapa -- ^ O mapa a desenhar 
+    -> [Picture] -- ^ O mapa transformado em imagens
 getPictures _ _ [] = [Blank] -- é preciso o blank??
 getPictures pics@[brick, crate, door] (x,_,y) ([]:mapa) = getPictures pics (x,x,y-64) mapa -- reset x, go down a line
 getPictures pics@[brick, crate, door] (x,x2,y) ((peca:linha):mapa)
@@ -231,7 +267,7 @@ eventListener (EventKey (SpecialKey KeyBackspace) Down _ _) (_, pic, _) = return
 eventListener (EventKey (Char 'i') Down _ _) e@(_,_,Play info) = do putStrLn (show info) -- põe as informações do Play no terminal
                                                                     return e
 eventListener (EventKey (SpecialKey KeyF1) Down _ _) (_, pic, _) = return (estadoBase pic (Play (1,(0,0),0,0))) -- primeiro nível
-eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _) = return ((Jogo [] (Jogador (0,0) Este False), pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None),0,0))) -- editor
+eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _) = return ((Jogo [] (Jogador (0,0) Este False), pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None,None),0,0))) -- editor
 eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _) = return ((Jogo stairMap (Jogador (0,28) Este False), pic, Play (0,(0,0),0,0))) -- mapa alto para testar offset vertical
 eventListener (EventKey (SpecialKey KeyF5) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, gm) = return (Jogo mapa (Jogador pos dir (not caixa)), pic, gm) -- toggle da caixa do jogador
 eventListener (EventKey (SpecialKey KeyF6) Down _ _) (_, pic, _) = return (estadoBase pic (Play (5,(0,0),0,0))) -- mapa comprido
@@ -349,20 +385,21 @@ eventListener _ e@(_,_,TabMenu _) = return e
 eventListener _ e@(_,_,Solver (_,2)) = return e
 
 -- MapEditor (tecla pressionada)
-eventListener (EventKey key Down _ _) (Jogo mapa (jogador@(Jogador (x,y) dir caixa)), pic, m@(MapEdit ((x1,y1), (x2,y2), peca, states, mode, sec))) 
-    | key == SpecialKey KeyEnter = return (Jogo adicionaMapa jogador, pic, m)
-    | key == SpecialKey KeyDelete = return (Jogo deleteMapa jogador, pic, m)
-    | otherwise = return (Jogo mapa jogador2, pic, MapEdit ((x3,y3),(x4,y4),peca2,(state1,state2),mode2,0))
+eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir caixa)), pic, m@(MapEdit ((x1,y1), (x2,y2), peca, (orState1,orState2,orState3), mode, sec))) =
+    return (Jogo mapa2 jogador2, pic, MapEdit ((x3,y3),(x4,y4),peca2,(state1,state2,state3),mode2,0))
     where (x3,y3,state1) | key == Char 'w' = (x1,y1+1,U)
                          | key == Char 'a' = (x1+1,y1,R)
                          | key == Char 's' = (x1,y1-1,D)
                          | key == Char 'd' = (x1-1,y1,L)
-                         | otherwise = (x1,y1,None) -- None ou o estado anterior?
+                         | otherwise = (x1,y1,orState1) -- None ou o estado anterior?
           (x4,y4,state2) | key == SpecialKey KeyUp = (x2,y2-1,U)
                          | key == SpecialKey KeyDown = (x2,y2+1,D)
                          | key == SpecialKey KeyLeft = (x2-1,y2,L)
                          | key == SpecialKey KeyRight = (x2+1,y2,R)
-                         | otherwise = (x2,y2,None)
+                         | otherwise = (x2,y2,orState2)
+          (state3,mapa2) | key == SpecialKey KeyEnter = (Ent,adicionaMapa (x2,y2) peca mapa)
+                         | key == SpecialKey KeyDelete = (Del,deleteMapa (x2,y2) mapa)
+                         | otherwise = (orState3,mapa)
           jogador2 | key == Char '4' = Jogador (x2,y2) dir caixa
                    | key == Char '5' = Jogador (x,y) dir (not caixa)
                    | key == Char '6' = Jogador (x,y) (if dir == Este then Oeste else Este) caixa
@@ -373,30 +410,26 @@ eventListener (EventKey key Down _ _) (Jogo mapa (jogador@(Jogador (x,y) dir cai
                 | otherwise = peca 
           mode2 | key == Char 'v'= if mode == 1 then 0 else 1
                 | key == SpecialKey KeySpace = if mode == 2 then 0 else 2
-                | key == Char 'p' = if mode == 3 then 0 else 3
+                | key == Char 'p' = if mode == 3 then 0 else 
+                    if length mapa > 0 then 3 else 0
                 | otherwise = mode
-          adicionaMapa :: Mapa
-          adicionaMapa | newMap /= [] = constroiMapa newMap
-                       | otherwise = mapa 
-                       where newMap = ((peca,(x2,y2)):(desconstroiMapa mapa))
-          deleteMapa :: Mapa
-          deleteMapa | newMap /= [] = constroiMapa newMap
-                     | otherwise = mapa
-                     where newMap = (filter (\(p,c) -> c /= (x2,y2)) (desconstroiMapa mapa))
 
 -- MapEditor (tecla libertada)
-eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (state1,state2), mode, sec)) =
-    return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (state3,state4), mode, 0))
-    where state3 | key == Char 'w' = None
+eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (state1,state2,state3), mode, sec)) =
+    return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (state4,state5,state6), mode, 0))
+    where state4 | key == Char 'w' = None
                  | key == Char 'a' = None
                  | key == Char 's' = None
                  | key == Char 'd' = None
                  | otherwise = state1
-          state4 | key == SpecialKey KeyUp = None
+          state5 | key == SpecialKey KeyUp = None
                  | key == SpecialKey KeyDown = None
                  | key == SpecialKey KeyLeft = None
                  | key == SpecialKey KeyRight = None
                  | otherwise = state2
+          state6 | key == SpecialKey KeyEnter = None
+                 | key == SpecialKey KeyDelete = None
+                 | otherwise = state3
 
 -- Menu
 eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
@@ -406,7 +439,7 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
                         saveGame "SaveGamePlay.txt" str 0
                         return (estadoBase pic (Play (1,(0,0),0,0)))
     | atual == Continue = return (estadoBase pic (MapSelector infoMapSelect))
-    | atual == MapEdit1 = return (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None),0,0))
+    | atual == MapEdit1 = return (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None,None),0,0))
     | otherwise = return e
     
 
@@ -442,16 +475,16 @@ step time (jogo@(Jogo _ (Jogador (x,y) _ _)), pic, Play (n,coords,sec,mov))
         if n == numeroMapas
         then return (jogo, pic, Won (mov,sec))
         else do let (jogo2@(Jogo mapa jogador),coords2) = jogoInicial (n+1)
-                    str = show ((desconstroiMapa mapa),jogador,(n+1,coords2,sec+time,mov))
+                    str = show (desconstroiMapa mapa,jogador,(n+1,coords2,sec+time,mov))
                 saveGame "SaveGamePlay.txt" str 0
                 return (jogo2, pic, Play (n+1,coords2,sec+time,mov))
     | otherwise = return (jogo, pic, Play (n,coords,sec+time,mov))
 
 --Map edit
-step time e@(jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (state1,state2),mode,sec)) =
+step time e@(jogo@(Jogo mapa jogador), pic, MapEdit ((x1,y1), (x2,y2), peca, (state1,state2,state3),mode,sec)) =
     if timeBetweenmodes < 250
-    then return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (state1,state2),mode,sec+time))
-    else return (jogo, pic, MapEdit ((x3,y3), (x4,y4), peca, (state1,state2),mode,0.235)) -- este número é para enquanto a pessoa não largou a tecla as peças se moverem mais rápido. se fosse 0 teria um delay chato
+    then return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (state1,state2,state3),mode,sec+time))
+    else return (Jogo mapa2 jogador, pic, MapEdit ((x3,y3), (x4,y4), peca, (state1,state2,state3),mode,0.235))
     where x3 | state1 == L = x1-1
              | state1 == R = x1+1
              | otherwise = x1
@@ -464,6 +497,9 @@ step time e@(jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (state1,state2),mode,se
           y4 | state2 == D = y2+1
              | state2 == U = y2-1
              | otherwise = y2
+          mapa2 | state3 == Ent = adicionaMapa (x2,y2) peca mapa
+                | state3 == Del = deleteMapa (x2,y2) mapa
+                | otherwise = mapa
           timeBetweenmodes = mod (round (sec*1000)) 500
 
 -- Menu
