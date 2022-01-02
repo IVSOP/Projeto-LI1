@@ -75,13 +75,24 @@ window = FullScreen
 fr :: Int
 fr = 50
 
-saveFile = "SaveGame.txt"
+-- grava no final do ficheiro
+appendSaveGame :: String -- nome do ficheiro
+    -> String -- string a gravar
+    -> IO ()
+appendSaveGame file s = appendFile file s 
 
-savePlay :: String -> IO ()
-savePlay str = do savedata <- readFile saveFile
-                  let contents = tail (lines savedata) -- para não apagar os dados do mapeditor
-                  putStrLn (concat contents) -- para evitar conflito read e write
-                  writeFile saveFile (unlines (str:contents))
+-- grava numa dada linha, se o ficheiro não tiver as linhas necessárias vai preencher com linhas vazias
+saveGame :: String -- nome do ficheiro
+    -> String -- string a gravar
+    -> Int -- numero da linha a gravar (a primeira linha é a 0)
+    -> IO ()
+saveGame file str n = do savedata <- readFile file
+                         let l = lines (savedata)
+                             len = length l
+                         if n > len-1 
+                         then appendFile file ((replicate (n-len) '\n')++str)
+                         else do let (a,b) = splitAt n l
+                                 writeFile file (unlines (a ++ (str:(tail b))))
 
 -- offset é para que o getPictures saiba onde começar a desenhar as imagens (o mais à esquerda possível)
 draw :: Estado -> IO Picture
@@ -91,7 +102,6 @@ draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec)) =
 
 -- MapEditor
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, sec)) =
-    -- TODO: fix background ao mostrar o mapa todo
     --Translate (-500) 200 (Pictures [Scale 0.1 0.1 (Text (show (Jogo mapa (Jogador (x,y) dir caixa)))), (Translate 0 (-150) (Scale 0.1 0.1 (Text (show (x2,y2)))))])
     return (Pictures [snowbg, (Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
         [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))])
@@ -149,12 +159,12 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           
 -- Play, Menu, Map Selector e Solver
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), gamemode)
-    | xmax <= 20 = let offset = getOffset mapa
+    | xmax <= 21 = let offset = getOffset mapa
                        map3 = getLines y mapa
                        offsetY = getOffsetY map3 in -- scrolling desnecessário para mapas pequenos, temos de centrar o mapa consoante xmax
         return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate ((xf*64)+offset) ((-y2*64)+offsetY) picFinal]))
 
-    | x <= 10 = let map2 = map (\linha -> take 20 linha) mapa
+    | x <= 10 = let map2 = map (\linha -> take 21 linha) mapa
                     map3 = getLines y map2
                     offsetY = getOffsetY map3 in
         return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate ((xf*64)+offset) (((-y2*64))+offsetY) picFinal]))
@@ -168,18 +178,22 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
         return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate ((x2*64)+offset) (((-y2*64))+offsetY) picFinal]))
     
     | otherwise = let map2 = getLines y mapa
-                      map3 = (map (\linha -> take 20 linha) (map (\linha -> drop (x-10) linha) map2))
-                      offset = getOffset map3
+                      map3 = (map (\linha -> take 21 linha) (map (\linha -> drop (x-10) linha) map2))
                       offsetY = getOffsetY map3 in
-        return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate (-32) (((-y2*64))+offsetY) picFinal]))
+        return (Pictures (sandbg:(getPictures [brick, crate, door] (offset,offset,offsetY) map3)++[Translate 0 (((-y2*64))+offsetY) picFinal]))
 
     where xmax = fromIntegral (length (head mapa))
           ymax = (length mapa)-1 -- +1 que o valor maximo de y
+
+          -- offset horizontal
           getOffset :: Mapa -> Float -- assume se que o mapa já só tem 20 blocos de comprimento
-          getOffset map3 = ((-64)*((fromIntegral (length (head map3)))/2))-32
+          getOffset map3 = ((-64)*((fromIntegral (length (head map3)))/2))
           offset = -640
+
           xf = fromIntegral x
           yf = fromIntegral y
+
+          -- imagem do jogador
           player = (case dir of Este -> playerRight
                                 Oeste -> playerLeft)
           picFinal 
@@ -195,7 +209,7 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           getOffsetY :: Mapa -> Float
           getOffsetY map3 = ((64)*((ymax2/2))-64)
                           where ymax2 = fromIntegral (length map3)
-          y2 = fromIntegral (mod y 15) -- (y-(15*(div y 15)))
+          y2 = fromIntegral (mod y 15)
           getLines :: Int -> Mapa -> Mapa -- devolve linhas do mapa a renderizar consoante altura do jogador
           getLines y l = drop (15*(section-1)) (take ((15*section)+1) l)
                        where section = (div y 15)+1
@@ -212,25 +226,28 @@ getPictures pics@[brick, crate, door] (x,x2,y) ((peca:linha):mapa)
 
 eventListener :: Event -> Estado -> IO Estado
 -- esta secção são comandos debug ou reset
-eventListener (EventKey (SpecialKey KeyEsc) Down _ _) _ = do exitSuccess -- comando para exit temporário
+eventListener (EventKey (SpecialKey KeyEsc) Down _ _) _ = exitSuccess -- comando para exit temporário
 eventListener (EventKey (SpecialKey KeyBackspace) Down _ _) (_, pic, _) = return (estadoBase pic (Menu infoMenu))
+eventListener (EventKey (Char 'i') Down _ _) e@(_,_,Play info) = do putStrLn (show info) -- põe as informações do Play no terminal
+                                                                    return e
 eventListener (EventKey (SpecialKey KeyF1) Down _ _) (_, pic, _) = return (estadoBase pic (Play (1,(0,0),0,0))) -- primeiro nível
 eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _) = return ((Jogo [] (Jogador (0,0) Este False), pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None),0,0))) -- editor
 eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _) = return ((Jogo stairMap (Jogador (0,28) Este False), pic, Play (0,(0,0),0,0))) -- mapa alto para testar offset vertical
 eventListener (EventKey (SpecialKey KeyF5) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, gm) = return (Jogo mapa (Jogador pos dir (not caixa)), pic, gm) -- toggle da caixa do jogador
-
+eventListener (EventKey (SpecialKey KeyF6) Down _ _) (_, pic, _) = return (estadoBase pic (Play (5,(0,0),0,0))) -- mapa comprido
+ 
 -- Quick save e load no Play
 eventListener (EventKey (Char 's') Down _ _) e@(Jogo mapa jogador, _, Play info) -- escrever estado Play
     = do let str = show ((desconstroiMapa mapa),jogador,info)
-         savePlay str
+         saveGame "SaveGamePlay.txt" str 10
          return e
 eventListener (EventKey (Char 'l') Down _ _) (_, pic, _) -- carregar estado play
-    = do texto <- readFile saveFile
-         let (mapa,jogador,info) = read texto
+    = do texto <- readFile "SaveGamePlay.txt"
+         let (mapa,jogador,info) = read (head (lines (texto)))
          return (Jogo (constroiMapa mapa) jogador, pic, Play info)
 
--- reset do gamemode
-eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play _)) = do savedata <- readFile saveFile
+-- reset do Play
+eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play _)) = do savedata <- readFile "SaveGamePlay.txt"
                                                                            let (_,_,info) = read (head (lines savedata))::([(Peca,(Int,Int))],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
                                                                                (jogo,_,_) = estadoBase pic gm
                                                                            return (jogo,pic,Play info)
@@ -340,7 +357,7 @@ eventListener (EventKey key Down _ _) (Jogo mapa (jogador@(Jogador (x,y) dir cai
                          | key == Char 'a' = (x1+1,y1,R)
                          | key == Char 's' = (x1,y1-1,D)
                          | key == Char 'd' = (x1-1,y1,L)
-                         | otherwise = (x1,y1,None)
+                         | otherwise = (x1,y1,None) -- None ou o estado anterior?
           (x4,y4,state2) | key == SpecialKey KeyUp = (x2,y2-1,U)
                          | key == SpecialKey KeyDown = (x2,y2+1,D)
                          | key == SpecialKey KeyLeft = (x2-1,y2,L)
@@ -385,8 +402,8 @@ eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca,
 eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
     | key /= SpecialKey KeyEnter = return (jogo2, pic, Menu (lista,atual))
     | atual == New = do let (Jogo mapa jogador,coords) = jogoInicial 1
-                            str = show ((desconstroiMapa mapa),jogador,(1,coords,0,0))
-                        savePlay str
+                            str = show (desconstroiMapa mapa,jogador,(1,coords,0,0))
+                        saveGame "SaveGamePlay.txt" str 0
                         return (estadoBase pic (Play (1,(0,0),0,0)))
     | atual == Continue = return (estadoBase pic (MapSelector infoMapSelect))
     | atual == MapEdit1 = return (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(None,None),0,0))
@@ -426,7 +443,7 @@ step time (jogo@(Jogo _ (Jogador (x,y) _ _)), pic, Play (n,coords,sec,mov))
         then return (jogo, pic, Won (mov,sec))
         else do let (jogo2@(Jogo mapa jogador),coords2) = jogoInicial (n+1)
                     str = show ((desconstroiMapa mapa),jogador,(n+1,coords2,sec+time,mov))
-                savePlay str
+                saveGame "SaveGamePlay.txt" str 0
                 return (jogo2, pic, Play (n+1,coords2,sec+time,mov))
     | otherwise = return (jogo, pic, Play (n,coords,sec+time,mov))
 
