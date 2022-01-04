@@ -53,6 +53,7 @@ jogoToTextAux (x:linha) =
       (case x of Bloco -> 'X'
                  Porta -> 'P'
                  Vazio -> ' '
+                 Picos -> '^'
                  Caixa -> 'C'):(jogoToTextAux linha)
 
 {- | Insere o jogador na lista de Strings criada pelo jogoToText, inserindo também uma caixa caso este esteja a carregar uma

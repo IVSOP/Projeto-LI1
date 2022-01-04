@@ -23,6 +23,7 @@ data Peca
   | Caixa -- ^ a caixa é como um bloco mas pode ser movida pelo 'Jogador'
   | Porta -- ^ a porta é a posição final do jogo
   | Vazio -- ^ um espaço vazio no 'Mapa'
+  | Picos
   deriving (Show, Read, Eq, Ord)
 
 type Mapa = [[Peca]]
