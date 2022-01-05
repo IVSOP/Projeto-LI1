@@ -39,9 +39,10 @@ decode n = reverse (decodeAux n)
 sequenceBuilder :: Int -> CordsPorta -> [(MTree (Jogo,[Int]))] -> [(MTree (Jogo,[Int]))] -> [Jogo] -> (Maybe [Int])
 sequenceBuilder 0 _ tree _ _ = Nothing
 sequenceBuilder depth porta [] accgames prevjogos = sequenceBuilder (depth-1) porta (newDepth accgames prevjogos) [] prevjogos
-sequenceBuilder depth porta (h@(Node (jogoresult@(Jogo _ (Jogador cords _ _)),moves) _ _ _ _):t) accgames prevjogos 
+sequenceBuilder depth porta (h@(Node (jogoresult@(Jogo mapa (Jogador cords@(x,y) _ _)),moves) _ _ _ _):t) accgames prevjogos 
     | cords == porta = Just moves
-    | cords /= porta = sequenceBuilder depth porta t (h:accgames) (saveGames jogoresult prevjogos)
+    | (mapa !! y) !! x == Picos = sequenceBuilder depth porta t (accgames) (saveGames jogoresult prevjogos)
+    | otherwise = sequenceBuilder depth porta t (h:accgames) (saveGames jogoresult prevjogos)
 
 -- constroi uma lista de árvores, que têm como raiz nodes com jogos resultantes de cada um dos movimentos aplicados ao seu nodo pai (da profunidade anterior), respetivamente.
 newDepth :: [(MTree (Jogo,[Int]))] -> [Jogo] -> [(MTree (Jogo,[Int]))]

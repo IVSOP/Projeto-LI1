@@ -160,14 +160,14 @@ Neste exemplo temos Jogador (6,1) Este True
 andar :: Jogo -> Movimento -> Coordenadas
 andar (Jogo [] (Jogador c _ _)) _ = c
 andar (Jogo mapa (Jogador (x,y) _ True)) AndarEsquerda -- com caixa
-    | (posj == Vazio || posj == Porta) && posc == Vazio = (x2,y2-1) 
+    | (posj == Vazio || posj == Porta || posj == Picos) && posc == Vazio = (x2,y2-1) 
     | otherwise = (x,y)
     where linhac:linhaj:l = drop (y-1) mapa
           posj = linhaj !! (x-1)
           posc = linhac !! (x-1)
           (x2,y2) = getNext l (x-1,y+1)
 andar (Jogo mapa (Jogador (x,y) _ True)) _
-    | (posj == Vazio || posj == Porta) && posc == Vazio = (x2,y2-1)
+    | (posj == Vazio || posj == Porta || posj == Picos) = (x2,y2-1)
     | otherwise = (x,y)
     where linhac:linhaj:l = drop (y-1) mapa
           posj = linhaj !! (x+1)
@@ -175,13 +175,13 @@ andar (Jogo mapa (Jogador (x,y) _ True)) _
           (x2,y2) = getNext l (x+1,y+1)
 
 andar (Jogo mapa (Jogador (x,y) _ _)) AndarEsquerda
-    | (posj == Vazio || posj == Porta) = (x2,y2-1)
+    | (posj == Vazio || posj == Porta || posj == Picos) = (x2,y2-1)
     | otherwise = (x,y)
     where linhaj:l = drop y mapa 
           posj = linhaj !! (x-1)
           (x2,y2) = getNext l (x-1,y+1)
 andar (Jogo mapa (Jogador (x,y) _ _)) _
-    | (posj == Vazio || posj == Porta) = (x2,y2-1)
+    | (posj == Vazio || posj == Porta || posj == Picos) = (x2,y2-1)
     | otherwise = (x,y)
     where linhaj:l = drop y mapa
           posj = linhaj !! (x+1)
@@ -340,8 +340,10 @@ XXX    XXXXXX
 
 largarCaixa :: Jogo -> Jogo
 largarCaixa jogo@(Jogo mapa (Jogador (x,y) Oeste _))
+    | pos1 == Picos && pos2 /= Vazio && pos2 /= Picos = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Este False) 
     | pos1 /= Vazio = jogo
-    | pos2 /= Vazio = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Oeste False)
+    | pos2 == Picos = Jogo (l1 ++ [linha1] ++ [c2 ++ [Caixa] ++ c2l] ++ l2) (Jogador (x,y) Este False)
+    | pos2 /= Vazio = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Este False)
     | otherwise = let (x2,y2) = getNext l2 (x-1,y+1)
                       (l3,linhac:l4) = splitAt (y2-1) mapa
                       (c3,posc:c4) = splitAt x2 linhac in
@@ -350,7 +352,9 @@ largarCaixa jogo@(Jogo mapa (Jogador (x,y) Oeste _))
           (c1,pos1:c1l) = splitAt (x-1) linha1
           (c2,pos2:c2l) = splitAt (x-1) linha2
 largarCaixa jogo@(Jogo mapa (Jogador (x,y) _ _))
+    | pos1 == Picos && pos2 /= Vazio && pos2 /= Picos = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Este False)
     | pos1 /= Vazio = jogo
+    | pos2 == Picos = Jogo (l1 ++ [linha1] ++ [c2 ++ [Caixa] ++ c2l] ++ l2) (Jogador (x,y) Este False)
     | pos2 /= Vazio = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Este False)
     | otherwise = let (x2,y2) = getNext l2 (x+1,y+1)
                       (l3,linhac:l4) = splitAt (y2-1) mapa

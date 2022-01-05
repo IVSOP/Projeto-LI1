@@ -73,7 +73,7 @@ infoMapSelect = ([(4,4,1),(6,4,2),(8,4,3),(10,4,4),(12,4,5),(21,1,6),(23,1,7),(2
 
 -- Map editor -- 
 
-type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Int,Int,Int,Int,Int),Int,Float) -- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo, Int que representa o modo, segundos passados
+type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Int,Int,Int,Int,Int),Int,Float,Int) -- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo, Int que representa o modo, segundos passados, numero do mapa (a contar do 1)
 
 -- TabMenu --
 
@@ -111,6 +111,12 @@ saveGame file str n = do savedata <- readFile file
                          else do let (a,b) = splitAt n l
                                  writeFile file (unlines (a ++ (str:(tail b))))
 
+loadGameEditor :: Int -> IO (Jogo,MapEditInfo)
+loadGameEditor n = do txt <- readFile "SaveGameMapEditor.txt"
+                      let (mapa,jogador,coords1,coords2,peca) = read ((lines txt) !! n) :: ([(Peca,[(Int,Int)])],Jogador,(Int,Int),(Int,Int),Peca)
+                      return (Jogo (makeMap mapa) jogador, (coords1,coords2,peca,(0,0,0,0,0),0,0,n+1))
+
+
 compressMapa :: [(Peca,(Int,Int))] -> [(Peca,[(Int,Int)])]
 compressMapa [] = []
 compressMapa mapa = [(Bloco,a),(Caixa,b),(Porta,c),(Picos,d)]
@@ -141,11 +147,11 @@ deleteMapa (x,y) mapa | x < 0 || y < 0 = mapa
 -- offset é para que o getPictures saiba onde começar a desenhar as imagens (o mais à esquerda possível)
 draw :: Estado -> IO Picture
 -- MapEditor transferido para play (se mode == 3)
-draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec)) =
+draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec,_)) =
     draw (jogo, pics, Play (-1,(-1,-1),-1,-1))
 
 -- MapEditor
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door, spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _)) =
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door, spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _,_)) =
     --Translate (-500) 200 (Pictures [Scale 0.1 0.1 (Text (show (Jogo mapa (Jogador (x,y) dir caixa)))), (Translate 0 (-150) (Scale 0.1 0.1 (Text (show (x2,y2)))))])
     return (Pictures [snowbg, (Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door, spikes] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
         [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))])
@@ -292,24 +298,31 @@ eventListener (EventKey (Char 'i') Down _ _) e@(_,_,Play info) = do putStrLn (sh
 eventListener (EventKey (Char 'i') Down _ _) e@(Jogo mapa jogador, _ , MapEdit _) = do putStrLn (show (mapa,jogador))
                                                                                        return e
 eventListener (EventKey (SpecialKey KeyF1) Down _ _) (_, pic, _) = return (estadoBase pic (Play (1,(0,0),0,0))) -- primeiro nível
-eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _) = return ((Jogo [] (Jogador (0,0) Este False), pic, MapEdit ((-13,-7),(0,0),Bloco,(0,0,0,0,0),0,0))) -- editor
+eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _) = return ((Jogo [] (Jogador (0,0) Este False), pic, MapEdit ((-13,-7),(0,0),Bloco,(0,0,0,0,0),0,0,1))) -- editor
 eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _) = return ((Jogo (makeMap stairMap) (Jogador (0,28) Este False), pic, Play (0,(0,0),0,0))) -- mapa alto para testar offset vertical
 eventListener (EventKey (SpecialKey KeyF5) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, gm) = return (Jogo mapa (Jogador pos dir (not caixa)), pic, gm) -- toggle da caixa do jogador
 eventListener (EventKey (SpecialKey KeyF6) Down _ _) (_, pic, _) = return (estadoBase pic (Play (5,(0,0),0,0))) -- mapa comprido
+eventListener (EventKey (SpecialKey KeyF7) Down _ _) (_, pic, _) = do (jogo,gm) <- loadGameEditor 0
+                                                                      return (jogo, pic, MapEdit gm)
 
--- Quick save e load no Play
-eventListener (EventKey (Char 's') Down _ _) e@(Jogo mapa jogador, _, Play info) -- escrever estado Play
+-- Quick save e load
+eventListener (EventKey (Char 's') Down _ _) e@(Jogo mapa jogador, _, Play info@(n,_,_,_)) -- escrever estado Play
     = do let str = show ((compressMapa (desconstroiMapa mapa)),jogador,info)
-         saveGame "SaveGamePlay.txt" str 10
+         saveGame "SaveGamePlay.txt" str n
          return e
-eventListener (EventKey (Char 'l') Down _ _) (_, pic, _) -- carregar estado play
+eventListener (EventKey (Char 'l') Down _ _) (_, pic, Play (n,_,_,_)) -- carregar estado
     = do texto <- readFile "SaveGamePlay.txt"
-         let (mapa,jogador,info) = read (head (lines (texto)))
+         let (mapa,jogador,info) = read ((lines (texto)) !! (n-1))
          return (Jogo (constroiMapa (decompressMapa mapa)) jogador, pic, Play info)
+eventListener (EventKey (Char 'l') Down _ _) (_, pic, MapEdit (_,_,_,_,_,_,n)) = do (jogo,gm) <- loadGameEditor (n-1) -- == 'r' ?
+                                                                                    return (jogo, pic, MapEdit gm)
+eventListener (EventKey (Char 's') Down _ _) (jogo@(Jogo mapa jogador), pic, MapEdit gm@(c1,c2,peca,_,_,_,n)) = do let str = show (compressMapa (desconstroiMapa mapa),jogador,c1,c2,peca)
+                                                                                                                   saveGame "SaveGameMapEditor.txt" str (n-1)
+                                                                                                                   return (jogo, pic, MapEdit gm)
 
 -- reset do Play
-eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play _)) = do savedata <- readFile "SaveGamePlay.txt"
-                                                                           let (_,_,info) = read (head (lines savedata))::([(Peca,(Int,Int))],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
+eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play _)) = do savedata <- readFile "SaveGamePlay.txt" -- alterar para ter em conta a linha
+                                                                           let (_,_,info) = read (head (lines savedata))::([(Peca,[(Int,Int)])],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
                                                                                (jogo,_,_) = estadoBase pic gm
                                                                            return (jogo,pic,Play info)
 --eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, Won _) = return (estadoBase pic (Play (1,(0,0),0,0)))
@@ -319,9 +332,9 @@ eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm) = return (estadoBas
 eventListener (EventKey _ Down _ _) (_, pic, Won _) = return (estadoBase pic (Menu infoMenu))
 
 -- MapEditor (mode == 3, jogar o mapa, usa o Play para permitir jogar)
-eventListener keyinfo@(EventKey key Down _ _) (jogo, pic, m@(MapEdit (c1, c2, peca, states, 3, sec))) =
+eventListener keyinfo@(EventKey key Down _ _) (jogo, pic, m@(MapEdit (c1, c2, peca, states, 3, sec,n))) =
     case key of SpecialKey KeyTab -> undefined -- TODO
-                Char 'p' -> return (jogo, pic, MapEdit (c1,c2,peca,states,0,sec))
+                Char 'p' -> return (jogo, pic, MapEdit (c1,c2,peca,states,0,sec,n))
                 _ -> do (jogo2,_,_) <- eventListener keyinfo (jogo, pic, Play (-1,(-1,-1),-1,-1)) -- numeros que não irão dar conflito
                         return (jogo2,pic,m)
 
@@ -410,8 +423,16 @@ eventListener _ e@(_,_,TabMenu _) = return e
 eventListener _ e@(_,_,Solver (_,2)) = return e
 
 -- MapEditor (tecla pressionada)
-eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir caixa)), pic, m@(MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode, sec))) =
-    return (Jogo mapa2 jogador2, pic, MapEdit ((x3,y3),(x4,y4),peca2,(hor1,vert1,hor2,vert2,action),mode2,sec2))
+eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir caixa)), pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode, sec, n)) 
+    | key == Char 'p' = if mode == 3 then do (jogo,gm) <- loadGameEditor (n-1)
+                                             return (jogo,pic,MapEdit gm)
+                                     else let mode3 | length mapa > 0 = 3 
+                                                    | otherwise = 0
+                                          in 
+                                          do let str = show (compressMapa (desconstroiMapa mapa),jogador,(x1,y1),(x2,y2),peca)
+                                             saveGame "SaveGameMapEditor.txt" str (n-1)
+                                             return (Jogo mapa2 jogador2, pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode3, sec, n))
+    | otherwise = return (Jogo mapa2 jogador2, pic, MapEdit ((x3,y3),(x4,y4),peca2,(hor1,vert1,hor2,vert2,action),mode2,sec2,n))
     where (x3,hor1) | key == Char 'd' = (x1-1,-1)
                     | key == Char 'a' = (x1+1,1)
                     | otherwise = (x1,oRhor1)
@@ -438,15 +459,15 @@ eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir c
                 | otherwise = peca 
           mode2 | key == Char 'v'= if mode == 1 then 0 else 1
                 | key == SpecialKey KeySpace = if mode == 2 then 0 else 2
-                | key == Char 'p' = if mode == 3 then 0 else 
-                    if length mapa > 0 then 3 else 0
+                -- | key == Char 'p' = if mode == 3 then 0 else 
+                  --   if length mapa > 0 then 3 else 0
                 | otherwise = mode
           sec2 | oRhor1 == 0 && oRhor2 == 0 && oRvert1 == 0 && oRvert2 == 0 = 0
                | otherwise = sec
 
 -- MapEditor (tecla libertada)
-eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode, sec)) =
-    return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, mov, mode, 0.235))
+eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode, sec, n)) =
+    return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, mov, mode, 0.235,n))
     where mov | key == Char 'w'|| key == Char 's' = (oRhor1,0,oRhor2,oRvert2,oRaction)
               | key == Char 'a' || key == Char 'd' = (0,oRvert1,oRhor2,oRvert2,oRaction)
               | key == SpecialKey KeyUp || key == SpecialKey KeyDown = (oRhor1,oRvert1,oRhor2,0,oRaction)
@@ -462,7 +483,7 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
                         saveGame "SaveGamePlay.txt" str 0
                         return (estadoBase pic (Play (1,(0,0),0,0)))
     | atual == Continue = return (estadoBase pic (MapSelector infoMapSelect))
-    | atual == MapEdit1 = return (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(0,0,0,0,0),0,0))
+    | atual == MapEdit1 = return (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(0,0,0,0,0),0,0,1))
     | otherwise = return e
     where jogo2 | key == SpecialKey KeyUp = moveJogador jogo Trepar
                 | key == SpecialKey KeyDown = moveJogador jogo InterageCaixa
@@ -499,16 +520,24 @@ step time (jogo@(Jogo mapa (Jogador (x,y) _ _)), pic, gm@(Play (n,coords,sec,mov
                 saveGame "SaveGamePlay.txt" str 0
                 return (jogo2, pic, Play (n+1,coords2,sec+time,mov))
     | (mapa !! y) !! x == Picos = do savedata <- readFile "SaveGamePlay.txt"
-                                     let (_,_,info) = read (head (lines savedata))::([(Peca,(Int,Int))],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
+                                     let (_,_,info) = read (head (lines savedata))::([(Peca,[(Int,Int)])],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
                                          (jogo,_,_) = estadoBase pic gm
                                      return (jogo,pic,Play info)
     | otherwise = return (jogo, pic, Play (n,coords,sec+time,mov))
 
+--Map edit com mode == 3 (jogar o mapa)
+step time e@(Jogo mapa (Jogador (x,y) _ _), pic, MapEdit (_, _, _, _,3,_,n))
+    | (pecaAtual == Picos || pecaAtual == Porta) = do (jogo,(c1,c2,peca,mov,_,sec,_)) <- loadGameEditor (n-1)
+                                                      return (jogo, pic, MapEdit (c1,c2,peca,mov,3,sec,n))
+    | otherwise = return e
+    where pecaAtual = (mapa !! y) !! x
+
+
 --Map edit
-step time e@(jogo@(Jogo mapa jogador), pic, MapEdit ((x1,y1), (x2,y2), peca, mov@(hor1,vert1,hor2,vert2,action),mode,sec)) =
+step time e@(jogo@(Jogo mapa jogador), pic, MapEdit ((x1,y1), (x2,y2), peca, mov@(hor1,vert1,hor2,vert2,action),mode,sec,n)) =
     if timeBetweenmodes < 250
-    then return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, mov,mode,sec+time))
-    else return (Jogo mapa2 jogador, pic, MapEdit ((x1+hor1,y1+vert1), (x2+hor2,y2+vert2), peca, mov,mode,0.235))
+    then return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, mov,mode,sec+time,n))
+    else return (Jogo mapa2 jogador, pic, MapEdit ((x1+hor1,y1+vert1), (x2+hor2,y2+vert2), peca, mov,mode,0.235,n))
     where mapa2 | action == 1 = adicionaMapa (x2,y2) peca mapa
                 | action == -1 = deleteMapa (x2,y2) mapa
                 | otherwise = mapa
