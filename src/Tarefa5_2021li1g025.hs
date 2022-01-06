@@ -27,7 +27,7 @@ jogoInicial n = maps !! (n-1) -- começa no mapa 1, o menu
 
 estadoBase :: Picture -> GameMode -> Estado
 estadoBase pics (Menu n) = (jogo, pics, Menu n) -- estado inicial, quando o jogador está no menu, obtido de infoMenu.
-                         where jogo = Jogo (makeMap menuMap) (Jogador (11,4) Este False)
+                         where jogo = Jogo (makeMap menuMap) (Jogador (9,4) Este False)
 estadoBase pics (Play (n,coords,sec,mov)) = (jogo, pics, Play (n,coords2,0,0)) -- !no futuro o mov não será 0 mas poderá ser carregado dos dados guardados -- estado nos níveis
                                              where (jogo,coords2) = jogoInicial n
 estadoBase pics (MapSelector n) = (jogo, pics, MapSelector n) -- devo meter o tempo e os movimentos a contar já no seletor ?
@@ -56,13 +56,13 @@ type WonInfo = (Int,Float) -- mov, time
 -- play
 type PlayInfo = (Int,(Int,Int),Float,Int) -- mapa, coords da porta, segundos, movimentos
 -- menu --
-data MenuStates = New | Continue | MapEdit1 | Normal 
+data MenuStates = New | Continue | LevelSelector | MapEdit1 | Normal 
     deriving (Eq,Show)
     
 type MenuInfo = ([(Int,Int,MenuStates)],MenuStates)
 
 infoMenu :: ([(Int,Int,MenuStates)],MenuStates)
-infoMenu = ([(5,8, Continue),(11,8,New),(17,8,MapEdit1)], Normal)
+infoMenu = ([(3,8, New),(7,8,Continue),(11,8,LevelSelector),(15,8,MapEdit1)], Normal)
 
 -- map selector --
 
@@ -151,7 +151,7 @@ draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec,_)) =
     draw (jogo, pics, Play (-1,(-1,-1),-1,-1))
 
 -- MapEditor
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door, spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _,_)) =
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door, spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _,_)) =
     --Translate (-500) 200 (Pictures [Scale 0.1 0.1 (Text (show (Jogo mapa (Jogador (x,y) dir caixa)))), (Translate 0 (-150) (Scale 0.1 0.1 (Text (show (x2,y2)))))])
     return (Pictures [snowbg, (Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door, spikes] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
         [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))])
@@ -190,7 +190,7 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), Pictures pics, Won (mov,sec)) =
     where bg = pics !! 14
 
 -- TabMenu
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door, spikes ,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), (TabMenu (posMenu,e2@(_,_,gm)))) = 
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door, spikes ,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), (TabMenu (posMenu,e2@(_,_,gm)))) = 
         do drawjogo <- draw e2
            return $ case gm of 
                         Play n -> Pictures (drawjogo:menuplay:[tabpointer1])
@@ -209,7 +209,7 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           tabpointer7 = Pictures ((Translate (-250) (280-140*((fromIntegral (posMenu))-1)) playerRight):[Translate 250 (280-140*((fromIntegral (posMenu))-1)) playerLeft])
           
 -- Play, Menu, Map Selector e Solver
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door,spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]), gamemode)
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door,spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), gamemode)
     | xmax <= 21 = let offset = getOffset mapa
                        map3 = getLines y mapa
                        offsetY = getOffsetY map3 in -- scrolling desnecessário para mapas pequenos, temos de centrar o mapa consoante xmax
@@ -250,9 +250,10 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           picFinal 
             | caixa = Pictures [player, Translate 0 64 crate] -- n tem em conta os casos em que o jogador vai para uma porta a segurar uma caixa
             | otherwise = case gamemode of (Menu (_,Normal)) -> player
-                                           (Menu (_,zona))  | zona == New -> Pictures [player, scale (0.5) (0.5) (Translate (-320) (96) (Text "New Game"))]
-                                                            | zona == Continue -> Pictures [player, scale (0.5) (0.5) (Translate (-384) (96) (Text "Level Selector"))]
-                                                            | zona == MapEdit1 -> Pictures [player, scale (0.5) (0.5) (Translate (-288) (96) (Text "Map Editor"))]
+                                           (Menu (_,zona))  | zona == New -> Pictures [player, scale (0.4) (0.4) (Translate (-320) (96) (Text "New Game"))]
+                                                            | zona == Continue -> Pictures [player, scale (0.5) (0.5) (Translate (-256) (96) (Text "Continue"))]
+                                                            | zona == LevelSelector -> Pictures [player, scale (0.4) (0.4) (Translate (-384) (96) (Text "Level Selector"))]
+                                                            | zona == MapEdit1 -> Pictures [player, scale (0.4) (0.4) (Translate (-288) (96) (Text "Map Editor"))]
                                            (MapSelector (_,0)) -> player
                                            (MapSelector (_,nivel)) -> Pictures [player, scale (0.5) (0.5) (Translate (-208) (96) (Text ("Level " ++ (show nivel))))]
                                            _ -> player
@@ -482,7 +483,8 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
                             str = show (compressMapa (desconstroiMapa mapa),jogador,(1,coords,0,0))
                         saveGame "SaveGamePlay.txt" str 0
                         return (estadoBase pic (Play (1,(0,0),0,0)))
-    | atual == Continue = return (estadoBase pic (MapSelector infoMapSelect))
+    | atual == Continue = return e -- (estadoBase pic (SaveLoadScreen ((1,1),(loadFile "SaveGamePlay.txt"))))
+    | atual == LevelSelector = return (estadoBase pic (MapSelector infoMapSelect))
     | atual == MapEdit1 = return (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(0,0,0,0,0),0,0,1))
     | otherwise = return e
     where jogo2 | key == SpecialKey KeyUp = moveJogador jogo Trepar
@@ -595,10 +597,15 @@ main = do
     Just grassbg <- loadJuicy "greenfields.png"
     Just sandbg <- loadJuicy "sand.png"
     Just spikes <- loadJuicy "spikes.png"
+    Just savescreen <- loadJuicy "savefile.png"
+    Just overwrite <- loadJuicy "overwrite.png"
+    Just loadquestion <- loadJuicy "load.png"
+    Just arrowLeft <- loadJuicy "arrow-red-left.png"
+    Just arrowRight <- loadJuicy "arrow-red-right.png"
     playIO window
            (white)
            fr
-           (estadoBase (Pictures [(Scale 2.783 2.783 playerLeft),(Scale 2.783 2.783 playerRight), (Scale 0.186 0.186 brick), (Scale 2.0 2.0 crate), (Scale 0.674 0.451 door), (Scale 0.0762 0.0745 spikes),menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg]) (Menu infoMenu)) -- 64x64 px
+           (estadoBase (Pictures [(Scale 2.783 2.783 playerLeft),(Scale 2.783 2.783 playerRight), (Scale 0.186 0.186 brick), (Scale 2.0 2.0 crate), (Scale 0.674 0.451 door), (Scale 0.0762 0.0745 spikes),menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]) (Menu infoMenu)) -- 64x64 px
            draw
            eventListener
            step
