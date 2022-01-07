@@ -382,18 +382,15 @@ eventListener (EventKey (Char 'l') Down _ _) (_, pic, Play (n,_,_)) -- carregar 
     = do texto <- readFile "SaveGamePlay.txt"
          let (mapa,jogador,info) = read ((lines texto) !! 0)::([(Peca,[(Int,Int)])],Jogador,PlayInfo) 
          return (Jogo (constroiMapa (decompressMapa mapa)) jogador, pic, Play info)
-eventListener (EventKey (Char 'l') Down _ _) e@(_, pic, MapEdit (_,_,_,(_,_,_,_,a),_,_,n)) | a == 2 = do (jogo,gm) <- loadGameEditor (n-1)
-                                                                                                         return (jogo, pic, MapEdit gm)
-                                                                                           | otherwise = return e
-eventListener (EventKey (Char 'r') Down _ _) e@(_, pic, MapEdit (_,_,_,(_,_,_,_,a),_,_,n)) | a == 2 = do (jogo,gm) <- loadGameEditor (n-1) -- l e r fazem a mesma coisa, pelo menos por agora
-                                                                                                         return (jogo, pic, MapEdit gm)
-                                                                                           | otherwise = return e
-{-                                                                                           
-eventListener (EventKey (Char 's') Down _ _) e@(jogo@(Jogo mapa jogador), pic, MapEdit gm@(c1,c2,peca,(_,_,_,_,a),_,_,n)) | a == 2 = do let str = show (compressMapa (desconstroiMapa mapa),jogador,c1,c2,peca)
-                                                                                                                                        saveGame "SaveGameMapEditor.txt" str (n-1)
-                                                                                                                                        return (jogo, pic, MapEdit gm)
-                                                                                                                         | otherwise = return e
-faz com que depois ao carregar no s não mova o mapa -}
+eventListener (EventKey (Char 'L') Down _ _) e@(_, pic, MapEdit (_,_,_,_,_,_,n)) = do (jogo,gm) <- loadGameEditor (n-1)
+                                                                                      return (jogo, pic, MapEdit gm)
+eventListener (EventKey (Char 'r') Down _ _) e@(_, pic, MapEdit (_,_,_,_,_,_,n)) = do (jogo,gm) <- loadGameEditor (n-1) -- l e r fazem a mesma coisa, pelo menos por agora
+                                                                                      return (jogo, pic, MapEdit gm)                                                                                         
+eventListener (EventKey (Char 'S') Down _ _) e@(jogo@(Jogo mapa jogador), pic, MapEdit gm@(c1,c2,peca,_,_,_,n)) =
+    do let str = show (compressMapa (desconstroiMapa mapa),jogador,c1,c2,peca)
+       saveGame "SaveGameMapEditor.txt" str (n-1)
+       return (jogo, pic, MapEdit gm)
+
 -- reset do Play
 eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play (a,sec,mov))) = do putStrLn "HELLO BOZO"
                                                                                      savedata <- readFile "SaveGamePlay.txt"
@@ -507,8 +504,7 @@ eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir c
                                           do let str = show (compressMapa (desconstroiMapa mapa),jogador,(x1,y1),(x2,y2),peca)
                                              saveGame "SaveGameMapEditor.txt" str (n-1)
                                              return (Jogo mapa2 jogador2, pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode3, sec, n))
-    | otherwise = do putStrLn (show key) 
-                     return (Jogo mapa2 jogador2, pic, MapEdit ((x3,y3),(x4,y4),peca2,(hor1,vert1,hor2,vert2,action),mode2,sec2,n))
+    | otherwise = return (Jogo mapa2 jogador2, pic, MapEdit ((x3,y3),(x4,y4),peca2,(hor1,vert1,hor2,vert2,action),mode2,sec2,n))
     where (x3,hor1) | key == Char 'd' = (x1-1,-1)
                     | key == Char 'a' = (x1+1,1)
                     | otherwise = (x1,oRhor1)
