@@ -231,9 +231,9 @@ pecaSingular ((_,coord):t) | length (getPeca t coord) > 0 = False
 
 -- | Verifica se todas as caixas do mapa têm um bloco ou uma caixa na posição diretamente abaixo
 validaCaixas :: [(Peca,Coordenadas)] -> Bool
-validaCaixas [] = True
-validaCaixas ((peca,(x,y)):l) | peca == Caixa = (case getPeca l (x,y+1) of [] -> False
-                                                                           [(Vazio,_)] -> False
-                                                                           [(Porta,_)] -> False
-                                                                           _ -> validaCaixas l )
-                              | otherwise = validaCaixas l
+--validaCaixas [] = True
+validaCaixas l =  and (map (\(peca,(x,y)) -> case getPeca l (x,y+1) of [(Caixa,_)] -> True
+                                                                       [(Bloco,_)] -> True
+                                                                       _ -> False) listaCaixas)
+               where listaCaixas = filter (\x -> case x of (Caixa,_) -> True
+                                                           _ -> False) l
