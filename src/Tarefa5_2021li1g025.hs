@@ -21,75 +21,113 @@ import LI12122
 import System.Exit
 import System.IO
 
--- este jogo inicial não é o jogo inicial absoluto, mas sim o de cada mapa. o mesmo acontece com o estadoBase
-jogoInicial :: Int -> (Jogo,(Int,Int))
-jogoInicial n = maps !! (n-1) -- começa no mapa 1, o menu
+-- * Data e tipos principais
 
-estadoBase :: Picture -> GameMode -> Estado
-estadoBase pics (Menu n) = (jogo, pics, Menu n) -- estado inicial, quando o jogador está no menu, obtido de infoMenu.
-                         where jogo = Jogo (makeMap menuMap) (Jogador (9,4) Este False)
-estadoBase pics (Play (n,coords,sec,mov)) = (jogo, pics, Play (n,coords2,0,0)) -- !no futuro o mov não será 0 mas poderá ser carregado dos dados guardados -- estado nos níveis
-                                             where (jogo,coords2) = jogoInicial n
-estadoBase pics (MapSelector n) = (jogo, pics, MapSelector n) -- devo meter o tempo e os movimentos a contar já no seletor ?
-                        where jogo = Jogo (makeMap mapSelectorMap) (Jogador (2,4) Este False)
-estadoBase pics gm = (Jogo [] (Jogador (0,0) Este False), pics, gm)
+-- | Estado usado pelo gloss, contendo um jogo, imagens e um modo de jogo 
+type Estado = (Jogo, Picture, GameMode)
 
--- lista de jogos e pos da porta
-maps :: [(Jogo,(Int,Int))]
-maps = [(Jogo (makeMap map1) (Jogador (1,2) Este False),(6,2)),(Jogo (makeMap map2) (Jogador (0,2) Este False), (8,2)),(Jogo (makeMap map3) (Jogador (1,3) Este False), (9,5)),(Jogo (makeMap map4) (Jogador (1,1) Este False), (1,3)),
-       (Jogo (makeMap map5) (Jogador (1,2) Este False),(4,0)),(Jogo (makeMap map6) (Jogador (1,1) Este False), (5,5)), (Jogo (makeMap map7) (Jogador (1,9) Este False),(21,1)), (Jogo (makeMap map8) (Jogador (6,3) Oeste False),(6,1)),
-       (Jogo (makeMap map9) (Jogador (12,13) Este False),(8,13)),(Jogo (makeMap map10) (Jogador (1,1) Este True),(4,0))]
-       
-makeMap :: [(Peca,[(Int,Int)])] -> Mapa
-makeMap m = constroiMapa (decompressMapa m)
-
-numeroMapas :: Int
-numeroMapas = (length maps)
-
---data e tipos principais--
-
-type Estado = (Jogo, Picture, GameMode) -- jogo atual, imagens, modo de jogo
-
-data GameMode = Menu MenuInfo | MapSelector MapSelectInfo | Play PlayInfo | MapEdit MapEditInfo | Won WonInfo | TabMenu TabMenuInfo | Solver SolverInfo
+-- | Os diferentes modos de jogo com as suas respetivas informações
+data GameMode = Menu MenuInfo -- ^ Menu (o menu inicial onde o joggador pode ser controlado)
+                | MapSelector MapSelectInfo -- ^ Seletor de mapas
+                | Play PlayInfo -- ^ O jogo propriamente dito
+                | MapEdit MapEditInfo -- ^ Editor de mapas
+                | Won WonInfo -- ^ Situação em que venceu o jogo
+                | TabMenu TabMenuInfo -- ^ Menu interativo
+                | Solver SolverInfo -- ^ Resolvedor do jogo
     deriving (Eq,Show)
 
--- won
-type WonInfo = (Int,Float) -- mov, time
--- play
-type PlayInfo = (Int,(Int,Int),Float,Int) -- mapa, coords da porta, segundos, movimentos
--- menu --
-data MenuStates = New | Continue | LevelSelector | MapEdit1 | Normal 
-    deriving (Eq,Show)
-    
+-- | (número de movimentos, tempo em segundos)
+type WonInfo = (Int,Float)
+
+-- | (número do mapa, coordenadas do jogador, tempo em segundos, número de movimentos)
+type PlayInfo = (Int,Float,Int) -- mapa, coords da porta, segundos, movimentos
+
+-- | TODO
 type MenuInfo = ([(Int,Int,MenuStates)],MenuStates)
 
+{- | Indica a porta em que o jogador está atualmente, no menu
+
+Decidimos que isto devia estar presente no estado pois assim a função 'step' seria a única responsável por ver se o jogador estava numa porta do menu, e as outras funções usam essa informação
+-}
+data MenuStates = New -- ^ Novo jogo
+                  | Continue -- ^ Continuar jogo
+                  | LevelSelector -- ^ Seletor de níveis
+                  | MapEdit1 -- ^ Editor de mapas (o 1 no nome é devido a MapEdit já existir)
+                  | Normal -- ^ Nenhuma porta
+    deriving (Eq,Show)
+
+-- | TODO
+type MapSelectInfo = ([(Int,Int,Int)],Int) -- coordenadas de portas e nº dos níveis correspondentes, acumulador para a posição do jogador, TODO: parâmetro- nº do último nível guardado
+
+{- | (coordenadas da câmera, coordenadas do cursor, Peca selecionada, informações para ajudar no movimento contínuo, número que representa o modo, tempo em segundos, número do mapa)
+
+As informações sobre o movimento contínuo representam (mover câmera verticalmente, mover câmera horizontalmente, mover cursor verticalmente, mover cursor horizontalmente, adicionar peça | tirar peça | ctrl está a ser pressionado)
+
+Estas permitem guardar um valor que indica que uma tecla está a ser segurada
+
+Os modos podem ser 0:normal | 1:validar o mapa | 2:zoom | 3:jogar o mapa
+-}
+type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Int,Int,Int,Int,Int),Int,Float,Int) -- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo, Int que representa o modo, segundos passados, numero do mapa (a contar do 1)
+
+-- | TODO
+type TabMenuInfo = (Int,Estado) -- posição atual do cursor pela ordem de cima para baixo na lista, modo de jogo em que é aberto o Tab.
+
+-- | TODO
+-- estado antes de entrar no TabMenu (antes de entrar no Solver) , lista de movimentos de resolveJogo, lista para onde vão os movimentos já efetuados (caso o jogador queria repetir a solução), número que regista a opção de começar a solução do início ou do lugar atual, tempo decorrido (para espaçar os movimentos da solução) , número que distingue o menu em que se pergunta onde deve começar a solução e a própria solução
+type SolverInfo = ((Estado, Maybe [Movimento], Maybe [Movimento], Int, Float),Int) 
+
+{-
+-- Lista de jogos e coordenadas da porta
+jogos :: [(Jogo,(Int,Int))]
+jogos = [(Jogo (makeMap map1) (Jogador (1,2) Este False),(6,2)),(Jogo (makeMap map2) (Jogador (0,2) Este False), (8,2)),(Jogo (makeMap map3) (Jogador (1,3) Este False), (9,5)),(Jogo (makeMap map4) (Jogador (1,1) Este False), (1,3)),
+        (Jogo (makeMap map5) (Jogador (1,2) Este False),(4,0)),(Jogo (makeMap map6) (Jogador (1,1) Este False), (5,5)), (Jogo (makeMap map7) (Jogador (1,9) Este False),(21,1)), (Jogo (makeMap map8) (Jogador (6,3) Oeste False),(6,1)),
+        (Jogo (makeMap map9) (Jogador (12,13) Este False),(8,13)),(Jogo (makeMap map10) (Jogador (1,1) Este True),(4,0))]
+-}
+
+-- | Lista de jogos de cada mapa
+jogos :: [Jogo]
+jogos = [Jogo (makeMap map1) (Jogador (1,2) Este False),Jogo (makeMap map2) (Jogador (0,2) Este False),Jogo (makeMap map3) (Jogador (1,3) Este False),Jogo (makeMap map4) (Jogador (1,1) Este False),
+        Jogo (makeMap map5) (Jogador (1,2) Este False),Jogo (makeMap map6) (Jogador (1,1) Este False), Jogo (makeMap map7) (Jogador (1,9) Este False), Jogo (makeMap map8) (Jogador (6,3) Oeste False),
+        Jogo (makeMap map9) (Jogador (12,13) Este False),Jogo (makeMap map10) (Jogador (1,1) Este True)]
+
+-- | TODO
 infoMenu :: ([(Int,Int,MenuStates)],MenuStates)
 infoMenu = ([(3,8, New),(7,8,Continue),(11,8,LevelSelector),(15,8,MapEdit1)], Normal)
 
--- map selector --
-
-type MapSelectInfo = ([(Int,Int,Int)],Int) -- coordenadas de portas e nº dos níveis correspondentes, acumulador para a posição do jogador, TODO: parâmetro- nº do último nível guardado
-
+-- | TODO
 infoMapSelect :: MapSelectInfo -- não inclui o nível do último nível guardado porque será adicionado mais tarde com IO.
 infoMapSelect = ([(4,4,1),(6,4,2),(8,4,3),(10,4,4),(12,4,5),(21,1,6),(23,1,7),(25,1,8),(27,1,9),(29,1,10)],0)
 
--- Map editor -- 
+numeroMapas :: Int
+numeroMapas = (length jogos)
 
-type MapEditInfo = ((Int,Int), (Int,Int), Peca, (Int,Int,Int,Int,Int),Int,Float,Int) -- posicao absoluta do mapa, posicao absoluta da peca, peca selecionada, informações para ajudar no movimento contínuo, Int que representa o modo, segundos passados, numero do mapa (a contar do 1)
-
--- TabMenu --
-
-type TabMenuInfo = (Int,Estado) -- posição atual do cursor pela ordem de cima para baixo na lista, modo de jogo em que é aberto o Tab.
-
--- Solver --
-
--- estado antes de entrar no TabMenu (antes de entrar no Solver) , lista de movimentos de resolveJogo, lista para onde vão os movimentos já efetuados (caso o jogador queria repetir a solução), número que regista a opção de começar a solução do início ou do lugar atual, tempo decorrido (para espaçar os movimentos da solução) , número que distingue o menu em que se pergunta onde deve começar a solução e a própria solução
-type SolverInfo = ((Estado, Maybe [Movimento], Maybe [Movimento], Int, Float),Int) 
 window :: Display
 window = FullScreen
 
 fr :: Int
 fr = 50
+
+-- * Funções auxiliares
+
+-- | Dado o número do mapa, devolve um Jogo que lhe corresponde
+-- este jogo inicial não é o jogo inicial absoluto, mas sim o de cada mapa. o mesmo acontece com o estadoBase
+jogoInicial :: Int -- ^ Número do mapa a jogar
+    -> Jogo -- ^ Jogo desse mapa
+jogoInicial n = jogos !! (n-1) -- começa no mapa 1
+
+{-| Dadas as imagens e um Gamemode, devolve o seu estado base
+
+Por exemplo, para Play (1,...), sendo 1 o número do mapa, irá devolver um estado inicial com esse Mapa, mas com os segundos e movimentos zerados
+-}
+estadoBase :: Picture -- ^ Imagens
+    -> GameMode -- ^ O gamemode que se pretende obter
+    -> Estado -- ^ Estado coreresponente
+estadoBase pics (Menu n) = (jogo, pics, Menu n) -- estado inicial, quando o jogador está no menu, obtido de infoMenu.
+                         where jogo = Jogo (makeMap menuMap) (Jogador (9,4) Este False)
+estadoBase pics (Play (n,sec,mov)) = (jogoInicial n, pics, Play (n,0,0)) -- !no futuro o mov não será 0 mas poderá ser carregado dos dados guardados -- estado nos níveis
+estadoBase pics (MapSelector n) = (jogo, pics, MapSelector n) -- devo meter o tempo e os movimentos a contar já no seletor ?
+                        where jogo = Jogo (makeMap mapSelectorMap) (Jogador (2,4) Este False)
+estadoBase pics gm = (Jogo [] (Jogador (0,0) Este False), pics, gm)
 
 -- | Escreve uma string no final do ficheiro
 appendSaveGame :: String -- ^ nome do ficheiro
@@ -103,7 +141,7 @@ Se o ficheiro não tiver as linhas necessárias irá ser preenchido com linhas v
 -}
 saveGame :: String -- ^ nome do ficheiro
     -> String -- ^ string a gravar
-    -> Int -- ^ numero da linha a gravar (a primeira linha é a 0)
+    -> Int -- ^ numero da linha a gravar
     -> IO ()
 saveGame file str n = do savedata <- readFile file
                          let l = lines (savedata)
@@ -113,12 +151,16 @@ saveGame file str n = do savedata <- readFile file
                          else do let (a,b) = splitAt n l
                                  writeFile file (unlines (a ++ (str:(tail b))))
 
-loadGameEditor :: Int -> IO (Jogo,MapEditInfo)
+-- | Carrega um estado do editor de mapas
+loadGameEditor :: Int -- ^ Número da linha (número do mapa - 1)
+    -> IO (Jogo,MapEditInfo)
 loadGameEditor n = do txt <- readFile "SaveGameMapEditor.txt"
-                      let (mapa,jogador,coords1,coords2,peca) = read ((lines txt) !! n) :: ([(Peca,[(Int,Int)])],Jogador,(Int,Int),(Int,Int),Peca)
+                      let contents = lines txt
+                          (mapa,jogador,coords1,coords2,peca) | n+1 > length contents = ([],Jogador (0,0) Este False,(0,0),(0,0),Bloco)
+                                                              | otherwise = read (contents !! n) :: ([(Peca,[(Int,Int)])],Jogador,(Int,Int),(Int,Int),Peca)
                       return (Jogo (makeMap mapa) jogador, (coords1,coords2,peca,(0,0,0,0,0),0,0,n+1))
 
-
+-- | Transforma a lista de peças do mapa (já desconstruído) em listas da forma [(Peca,(lista das coordenadas em que ela ocorre))]
 compressMapa :: [(Peca,(Int,Int))] -> [(Peca,[(Int,Int)])]
 compressMapa [] = []
 compressMapa mapa = [(Bloco,a),(Caixa,b),(Porta,c),(Picos,d)]
@@ -126,7 +168,7 @@ compressMapa mapa = [(Bloco,a),(Caixa,b),(Porta,c),(Picos,d)]
                                                                                           Caixa -> (r1,coords:r2,r3,r4)
                                                                                           Porta -> (r1,r2,coords:r3,r4)
                                                                                           Picos -> (r1,r2,r3,coords:r4)) ([],[],[],[]) mapa
-
+-- | Transforma o mapa comprimido num mapa desconstruído
 decompressMapa :: [(Peca,[(Int,Int)])] -> [(Peca,(Int,Int))]
 decompressMapa [] = []
 decompressMapa [(Bloco,a),(Caixa,b),(Porta,c),(Picos,d)] = blocos ++ caixas ++ portas ++ picos
@@ -135,12 +177,23 @@ decompressMapa [(Bloco,a),(Caixa,b),(Porta,c),(Picos,d)] = blocos ++ caixas ++ p
                           portas = map (\coords -> (Porta,coords)) c
                           picos = map (\coords -> (Picos,coords)) d
 
-adicionaMapa :: (Int,Int) -> Peca -> Mapa -> Mapa
+-- | Simultaneamente faz a decompressão e a construção de um mapa na sua forma comprimida
+makeMap :: [(Peca,[(Int,Int)])] -> Mapa
+makeMap m = constroiMapa (decompressMapa m)
+
+-- | Adiciona uma peça em dadas coordenadas a um mapa
+adicionaMapa :: (Int,Int) -- ^ Coordenadas da peça
+    -> Peca -- ^ Peça a colocar
+    -> Mapa -- ^ Mapa original
+    -> Mapa -- ^ Mapa resultante
 adicionaMapa (x,y) peca mapa | x < 0 || y < 0 = mapa
                              | newMap /= [] = constroiMapa newMap
                              | otherwise = [] 
                              where newMap = ((peca,(x,y)):(desconstroiMapa mapa))
-deleteMapa :: (Int,Int) -> Mapa -> Mapa
+-- | Apaga qualquer peça de um mapa dadas as coordenadas
+deleteMapa :: (Int,Int) -- ^ Coordenadas da peça a apagar
+    -> Mapa -- ^ Mapa original
+    -> Mapa -- ^ Mapa resultante
 deleteMapa (x,y) mapa | x < 0 || y < 0 = mapa
                       | newMap /= [] = constroiMapa newMap
                       | otherwise = []
@@ -150,7 +203,7 @@ deleteMapa (x,y) mapa | x < 0 || y < 0 = mapa
 draw :: Estado -> IO Picture
 -- MapEditor transferido para play (se mode == 3)
 draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec,_)) =
-    draw (jogo, pics, Play (-1,(-1,-1),-1,-1))
+    draw (jogo, pics, Play (-1,0,0))
 
 -- MapEditor
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door, spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _,_)) =
@@ -299,35 +352,35 @@ eventListener (EventKey (SpecialKey KeyEsc) Down _ _) _ = exitSuccess
 -- menu
 eventListener (EventKey (SpecialKey KeyBackspace) Down _ _) (_, pic, _) = return (estadoBase pic (Menu infoMenu))
 -- põe as informações do modo de jogo no terminal
-eventListener (EventKey (Char 'i') Down _ _) e@(_,_,info) = do putStrLn (show info)
+eventListener (EventKey (Char 'I') Down _ _) e@(_,_,info) = do putStrLn (show info)
                                                                return e
  -- primeiro nível
-eventListener (EventKey (SpecialKey KeyF1) Down _ _) (_, pic, _) = return (estadoBase pic (Play (1,(0,0),0,0)))
+eventListener (EventKey (SpecialKey KeyF1) Down _ _) (_, pic, _) = return (estadoBase pic (Play (1,0,0)))
 -- editor de mapas vazio
 eventListener (EventKey (SpecialKey KeyF2) Down _ _) (_, pic, _) = return ((Jogo [] (Jogador (0,0) Este False), pic, MapEdit ((-13,-7),(0,0),Bloco,(0,0,0,0,0),0,0,1)))
 -- mapa alto para testar offset vertical
-eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _) = return ((Jogo (makeMap stairMap) (Jogador (0,28) Este False), pic, Play (0,(0,0),0,0)))
+eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _) = return ((Jogo (makeMap stairMap) (Jogador (0,28) Este False), pic, Play (0,0,0)))
 -- toggle da caixa do jogador
 eventListener (EventKey (SpecialKey KeyF5) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, gm) = return (Jogo mapa (Jogador pos dir (not caixa)), pic, gm)
  -- mapa comprido para testar offset horizontal (é um dos mapa base)
-eventListener (EventKey (SpecialKey KeyF6) Down _ _) (_, pic, _) = return (estadoBase pic (Play (5,(0,0),0,0)))
+eventListener (EventKey (SpecialKey KeyF6) Down _ _) (_, pic, _) = return (estadoBase pic (Play (5,0,0)))
 -- load do primeiro mapa no ficheiro do editor (pode crashar se não houver nenhum (?))
 eventListener (EventKey (SpecialKey KeyF7) Down _ _) (_, pic, _) = do (jogo,gm) <- loadGameEditor 0
                                                                       return (jogo, pic, MapEdit gm)
 -- mapa anterior no play (crasha se já for o primeiro mapa)
-eventListener (EventKey (SpecialKey KeyF8) Down _ _) (_, pic, Play (n,_,_,_)) = return (estadoBase pic (Play (n-1,(0,0),0,0)))
+eventListener (EventKey (SpecialKey KeyF8) Down _ _) (_, pic, Play (n,_,_)) = return (estadoBase pic (Play (n-1,0,0)))
 -- próximo mapa no play (crasha se já for o último mapa)
-eventListener (EventKey (SpecialKey KeyF9) Down _ _) (_, pic, Play (n,_,_,_)) = return (estadoBase pic (Play (n+1,(0,0),0,0)))
+eventListener (EventKey (SpecialKey KeyF9) Down _ _) (_, pic, Play (n,_,_)) = return (estadoBase pic (Play (n+1,0,0)))
 
 
 -- Quick save e load
-eventListener (EventKey (Char 's') Down _ _) e@(Jogo mapa jogador, _, Play info@(n,_,_,_)) -- escrever estado Play
+eventListener (EventKey (Char 's') Down _ _) e@(Jogo mapa jogador, _, Play info@(n,_,_)) -- escrever estado Play
     = do let str = show ((compressMapa (desconstroiMapa mapa)),jogador,info)
-         saveGame "SaveGamePlay.txt" str n
+         saveGame "SaveGamePlay.txt" str 0
          return e
-eventListener (EventKey (Char 'l') Down _ _) (_, pic, Play (n,_,_,_)) -- carregar estado Play
+eventListener (EventKey (Char 'l') Down _ _) (_, pic, Play (n,_,_)) -- carregar estado Play
     = do texto <- readFile "SaveGamePlay.txt"
-         let (mapa,jogador,info) = read ((lines (texto)) !! (n-1))
+         let (mapa,jogador,info) = read ((lines texto) !! 0)::([(Peca,[(Int,Int)])],Jogador,PlayInfo) 
          return (Jogo (constroiMapa (decompressMapa mapa)) jogador, pic, Play info)
 eventListener (EventKey (Char 'l') Down _ _) e@(_, pic, MapEdit (_,_,_,(_,_,_,_,a),_,_,n)) | a == 2 = do (jogo,gm) <- loadGameEditor (n-1)
                                                                                                          return (jogo, pic, MapEdit gm)
@@ -342,10 +395,11 @@ eventListener (EventKey (Char 's') Down _ _) e@(jogo@(Jogo mapa jogador), pic, M
                                                                                                                          | otherwise = return e
 faz com que depois ao carregar no s não mova o mapa -}
 -- reset do Play
-eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play (a,_,sec,mov))) = do savedata <- readFile "SaveGamePlay.txt"
-                                                                                       let (_,_,(_,b,_,_)) = read (head (lines savedata))::([(Peca,[(Int,Int)])],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
-                                                                                           (jogo,_,_) = estadoBase pic gm
-                                                                                       return (jogo,pic,Play (a,b,sec,mov))
+eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play (a,sec,mov))) = do putStrLn "HELLO BOZO"
+                                                                                     savedata <- readFile "SaveGamePlay.txt"
+                                                                                     let (_,_,(_,sec2,mov2)) = read ((lines savedata) !! 0)::([(Peca,[(Int,Int)])],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
+                                                                                         (jogo,_,_) = estadoBase pic gm
+                                                                                     return (jogo,pic,Play (a,sec+sec2,mov+mov2))
 --eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, Won _) = return (estadoBase pic (Play (1,(0,0),0,0)))
 --eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm) = return (estadoBase pic gm)
 
@@ -356,7 +410,7 @@ eventListener (EventKey _ Down _ _) (_, pic, Won _) = return (estadoBase pic (Me
 eventListener keyinfo@(EventKey key Down _ _) (jogo, pic, m@(MapEdit (c1, c2, peca, states, 3, sec,n))) =
     case key of SpecialKey KeyTab -> undefined -- TODO
                 Char 'p' -> return (jogo, pic, MapEdit (c1,c2,peca,states,0,sec,n))
-                _ -> do (jogo2,_,_) <- eventListener keyinfo (jogo, pic, Play (-1,(-1,-1),-1,-1)) -- numeros que não irão dar conflito
+                _ -> do (jogo2,_,_) <- eventListener keyinfo (jogo, pic, Play (-1,0,0)) -- -1 para nao dar conflito (??)
                         return (jogo2,pic,m)
 
 -- TabMenu e Solver
@@ -418,8 +472,8 @@ eventListener (EventKey (SpecialKey KeyEnter) Down _ _) e@(_,pics, TabMenu (pos,
                     | pos == 3 -> return e -- TODO
                     | pos == 4 -> return (estadoBase pics (Menu infoMenu)) -- TODO: mensagem a perguntar se quer gravar, se não tiver gravado
 
-    Solver ((emenu@(_,_,TabMenu (_,(ebefore@(jogo,_,Play (n,_,_,_))))),_,movelist,choice,_),state) -> case state of
-            1   | pos == 1 -> return (fst(maps !! (n-1)),pics,Solver ((emenu,getMoves1,getMoves1,1,0.1),2)) -- começa a solução do início do nível atual, o número 500 é arbitrariamente grande, para não haver um limite máximo de moves ao resolver o nível; o tempo é 0.1 (para dar tempo ao jogador para se habituar)
+    Solver ((emenu@(_,_,TabMenu (_,(ebefore@(jogo,_,Play (n,_,_))))),_,movelist,choice,_),state) -> case state of
+            1   | pos == 1 -> return (jogos !! (n-1),pics,Solver ((emenu,getMoves1,getMoves1,1,0.1),2)) -- começa a solução do início do nível atual, o número 500 é arbitrariamente grande, para não haver um limite máximo de moves ao resolver o nível; o tempo é 0.1 (para dar tempo ao jogador para se habituar)
                 | pos == 2 -> return (jogo,pics,Solver ((emenu,getMoves2, getMoves2, 2,0.1),2)) -- começa a solução da posição atual
                 | pos == 3 -> return emenu
 
@@ -429,7 +483,7 @@ eventListener (EventKey (SpecialKey KeyEnter) Down _ _) e@(_,pics, TabMenu (pos,
                 | pos == 4 -> return (estadoBase pics (Menu infoMenu)) -- TODO: mensagem a perguntar se quer gravar, se não tiver gravado
 
             3   | pos == 1 -> return $ case choice of
-                                        1 -> (fst(maps !! (n-1)),pics,Solver ((emenu,movelist, movelist,1,0.1),2))
+                                        1 -> (jogos !! (n-1),pics,Solver ((emenu,movelist, movelist,1,0.1),2))
                                         2 -> (jogo,pics,Solver ((emenu, movelist, movelist, 2,0.1),2))
                 | pos == 2 -> return emenu
 
@@ -437,7 +491,7 @@ eventListener (EventKey (SpecialKey KeyEnter) Down _ _) e@(_,pics, TabMenu (pos,
 
              -- dá a lista de movimentos para a solução. Permite calcular apenas uma vez a solução, mesmo que o jogador queira repetir a solução.
               
-        where getMoves1 = resolveJogo 500 (fst (maps !! (n-1)))
+        where getMoves1 = resolveJogo 500 (jogos !! (n-1))
               getMoves2 = resolveJogo 500 jogo
 
 eventListener _ e@(_,_,TabMenu _) = return e
@@ -453,7 +507,8 @@ eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir c
                                           do let str = show (compressMapa (desconstroiMapa mapa),jogador,(x1,y1),(x2,y2),peca)
                                              saveGame "SaveGameMapEditor.txt" str (n-1)
                                              return (Jogo mapa2 jogador2, pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode3, sec, n))
-    | otherwise = return (Jogo mapa2 jogador2, pic, MapEdit ((x3,y3),(x4,y4),peca2,(hor1,vert1,hor2,vert2,action),mode2,sec2,n))
+    | otherwise = do putStrLn (show key) 
+                     return (Jogo mapa2 jogador2, pic, MapEdit ((x3,y3),(x4,y4),peca2,(hor1,vert1,hor2,vert2,action),mode2,sec2,n))
     where (x3,hor1) | key == Char 'd' = (x1-1,-1)
                     | key == Char 'a' = (x1+1,1)
                     | otherwise = (x1,oRhor1)
@@ -468,7 +523,7 @@ eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir c
                      | otherwise = (y2,oRvert2)
           (action,mapa2) | key == SpecialKey KeyEnter = (1,adicionaMapa (x2,y2) peca mapa)
                          | key == SpecialKey KeyDelete = (-1,deleteMapa (x2,y2) mapa)
-                         | key == SpecialKey KeyCtrlL = (2,mapa)
+                         | key == SpecialKey KeyShiftL = (2,mapa)
                          | oRaction == 2 = (2,shiftedMap)
                          | otherwise = (oRaction,mapa)
                          where shiftedMap | mapa == [] = []
@@ -488,15 +543,13 @@ eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir c
                 | otherwise = peca 
           mode2 | key == Char 'v'= if mode == 1 then 0 else 1
                 | key == SpecialKey KeySpace = if mode == 2 then 0 else 2
-                -- | key == Char 'p' = if mode == 3 then 0 else 
-                  --   if length mapa > 0 then 3 else 0
                 | otherwise = mode
           sec2 | oRhor1 == 0 && oRhor2 == 0 && oRvert1 == 0 && oRvert2 == 0 = 0
                | otherwise = sec
 
 -- MapEditor (tecla libertada)
 eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode, sec, n))
-    | key == SpecialKey KeyCtrlL = return (jogo,pic, MapEdit ((x1,y1),(x2,y2),peca,(oRhor1,oRvert1,oRhor2,oRvert2,0),mode,sec,n))
+    | key == SpecialKey KeyShiftL = return (jogo,pic, MapEdit ((x1,y1),(x2,y2),peca,(oRhor1,oRvert1,oRhor2,oRvert2,0),mode,sec,n))
     | otherwise = return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, mov, mode, 0.235,n))
     where mov | key == Char 'w'|| key == Char 's' = (oRhor1,0,oRhor2,oRvert2,oRaction)
               | key == Char 'a' || key == Char 'd' = (0,oRvert1,oRhor2,oRvert2,oRaction)
@@ -508,10 +561,10 @@ eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca,
 -- Menu
 eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
     | key /= SpecialKey KeyEnter = return (jogo2, pic, Menu (lista,atual))
-    | atual == New = do let (Jogo mapa jogador,coords) = jogoInicial 1
-                            str = show (compressMapa (desconstroiMapa mapa),jogador,(1,coords,0,0))
+    | atual == New = do let (Jogo mapa jogador) = jogoInicial 1
+                            str = show (compressMapa (desconstroiMapa mapa),jogador,(1,0,0))
                         saveGame "SaveGamePlay.txt" str 0
-                        return (estadoBase pic (Play (1,(0,0),0,0)))
+                        return (estadoBase pic (Play (1,0,0)))
     | atual == Continue = return e -- (estadoBase pic (SaveLoadScreen ((1,1),(loadFile "SaveGamePlay.txt"))))
     | atual == LevelSelector = return (estadoBase pic (MapSelector infoMapSelect))
     | atual == MapEdit1 = return (Jogo [] (Jogador (0,0) Este False),pic, MapEdit ((-13,-7),(0,0),Bloco,(0,0,0,0,0),0,0,1))
@@ -524,10 +577,10 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
 
 -- Map selector e Play
 eventListener (EventKey key Down _ _) e@(jogo, pic, gamemode) = case gamemode of 
-        Play (mapa,coords,sec,mov) -> return (jogo2, pic, Play (mapa,coords,sec,mov+1))
+        Play (mapa,sec,mov) -> return (jogo2, pic, Play (mapa,sec,mov+1))
         MapSelector (lista,atual) -> 
             let novoEstado2 | atual == 0 =  e
-                            | otherwise = (estadoBase pic (Play (atual,(0,0),0,0)))
+                            | otherwise = (estadoBase pic (Play (atual,0,0)))
             in  if key == SpecialKey KeyEnter
                 then return novoEstado2
                 else return (jogo2, pic, MapSelector (lista,atual)) 
@@ -542,19 +595,20 @@ eventListener _ s = return s
 
 step :: Float -> Estado -> IO Estado
 --Play
-step time (jogo@(Jogo mapa (Jogador (x,y) _ _)), pic, gm@(Play (n,coords,sec,mov)))
-    | (x,y) == coords =
+step time (jogo@(Jogo mapa (Jogador (x,y) _ _)), pic, gm@(Play (n,sec,mov)))
+    | pecaAtual == Porta =
         if n == numeroMapas
         then return (jogo, pic, Won (mov,sec))
-        else do let (jogo2@(Jogo mapa jogador),coords2) = jogoInicial (n+1)
-                    str = show (compressMapa (desconstroiMapa mapa),jogador,(n+1,coords2,sec+time,mov))
+        else do let (jogo2@(Jogo mapa jogador)) = jogoInicial (n+1)
+                    str = show (compressMapa (desconstroiMapa mapa),jogador,(n+1,sec+time,mov))
                 saveGame "SaveGamePlay.txt" str 0
-                return (jogo2, pic, Play (n+1,coords2,sec+time,mov))
-    | (mapa !! y) !! x == Picos = do savedata <- readFile "SaveGamePlay.txt"
-                                     let (_,_,info) = read (head (lines savedata))::([(Peca,[(Int,Int)])],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
-                                         (jogo,_,_) = estadoBase pic gm
-                                     return (jogo,pic,Play info)
-    | otherwise = return (jogo, pic, Play (n,coords,sec+time,mov))
+                return (jogo2, pic, Play (n+1,sec+time,mov))
+    | pecaAtual == Picos = do savedata <- readFile "SaveGamePlay.txt"
+                              let (_,_,info) = read (head (lines savedata))::([(Peca,[(Int,Int)])],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
+                                  (jogo,_,_) = estadoBase pic gm
+                              return (jogo,pic,Play info)
+    | otherwise = return (jogo, pic, Play (n,sec+time,mov))
+    where pecaAtual = (mapa !! y) !! x
 
 --Map edit com mode == 3 (jogar o mapa)
 step time e@(Jogo mapa (Jogador (x,y) _ _), pic, MapEdit (_, _, _, _,3,_,n))

@@ -340,10 +340,10 @@ XXX    XXXXXX
 
 largarCaixa :: Jogo -> Jogo
 largarCaixa jogo@(Jogo mapa (Jogador (x,y) Oeste _))
-    | pos1 == Picos && pos2 /= Vazio && pos2 /= Picos = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Este False) 
+    | pos1 == Picos && pos2 /= Vazio && pos2 /= Picos = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Oeste False) 
     | pos1 /= Vazio = jogo
-    | pos2 == Picos = Jogo (l1 ++ [linha1] ++ [c2 ++ [Caixa] ++ c2l] ++ l2) (Jogador (x,y) Este False)
-    | pos2 /= Vazio = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Este False)
+    | pos2 == Picos = Jogo (l1 ++ [linha1] ++ [c2 ++ [Caixa] ++ c2l] ++ l2) (Jogador (x,y) Oeste False)
+    | pos2 /= Vazio = Jogo (l1 ++ [c1 ++ [Caixa] ++ c1l] ++ [linha2] ++ l2) (Jogador (x,y) Oeste False)
     | otherwise = let (x2,y2) = getNext l2 (x-1,y+1)
                       (l3,linhac:l4) = splitAt (y2-1) mapa
                       (c3,posc:c4) = splitAt x2 linhac in
