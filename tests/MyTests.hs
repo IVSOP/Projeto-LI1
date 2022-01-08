@@ -121,12 +121,10 @@ movementListM2J2 = [Trepar,AndarDireita,AndarDireita,AndarDireita,
   Trepar,AndarDireita]
 
 -- lista de jogos e pos da porta
-mapTests6 = [(Jogo map1 (Jogador (1,2) Este False)),(Jogo map2 (Jogador (1,3) Este False)),(Jogo map3 (Jogador (1,1) Este False)),(Jogo map4 (Jogador (1,1) Este False)), (Jogo hugeMap (Jogador (1,9) Este False))]
+mapTests6 = [(Jogo (makeMap map1) (Jogador (1,2) Este False)),(Jogo (makeMap map3) (Jogador (1,3) Este False)),(Jogo (makeMap map4) (Jogador (1,1) Este False)),(Jogo (makeMap map6) (Jogador (1,1) Este False)), (Jogo (makeMap map7) (Jogador (1,9) Este False))]
 
 
 
-
-{- -- estes testes são referentes ao projeto fase 1 - já não funcionam por introdução da compressão dos mapas
 testsT1 = TestList ["Tarefa 1 - base em forma de triângulo" ~: validaPotencialMapa maptest1'2 ~=? True,
                     "Tarefa 1 - maptesta sem porta" ~: validaPotencialMapa maptest1'3 ~=? False,
                     "Tarefa 1 - maptesta sem espaço vazio" ~: validaPotencialMapa maptest1'4 ~=? False, 
@@ -166,7 +164,7 @@ testsT4Aux = TestList  ["Testa andar (1)" ~: andar (Jogo maptest2 (Jogador (5,0)
                         "Tarefa 4 - trepar com bloco por cima" ~: trepar (Jogo maptest4'1 (Jogador (2,4) Oeste False)) Trepar ~=? (2,4),
                         "Tarefa 4 - trepar bloco de costas" ~: trepar (Jogo maptest4'1 (Jogador (7,2) Este False)) Trepar ~=? (7,2),
                         "Tarefa 4 - trepar para a mesma posição que a porta" ~: trepar (Jogo maptest4'1 (Jogador (7,2) Este False)) Trepar ~=? (7,2)] -- assumo que o jogador poderá trepar para a posição da porta
--}
+
 testsT6 = TestList     ["Teste movimentos insuficientes" ~: (resolveJogo 6 (mapTests6 !! 0)) ~=? Nothing,
                         "Teste nível 1 jogo" ~: (resolveJogo 50 (mapTests6 !! 0)) ~=? Just [InterageCaixa,AndarDireita,InterageCaixa,Trepar,Trepar,AndarDireita,AndarDireita],
                         "Teste nível 2 jogo" ~: (resolveJogo 50 (mapTests6 !! 1)) ~=? Just [InterageCaixa,AndarDireita,Trepar,InterageCaixa,AndarDireita,Trepar,Trepar,AndarDireita,AndarDireita,AndarDireita],
@@ -177,10 +175,30 @@ testsT6 = TestList     ["Teste movimentos insuficientes" ~: (resolveJogo 6 (mapT
 
 runTestsT1 = runTestTT testsT1
 runTestsT2 = runTestTT testsT2
-runTestsT3 = runTestTT testsT3
+runTestsT3 = runTestTT testsT3 -- alguns destes agora estão a dar erro por alguma razão
 runTestsT4 = runTestTT testsT4
 runTestsT4Aux = runTestTT testsT4Aux
 runTestsT6 = runTestTT testsT6
 
 runAllTests = runTestTT $ TestList [testsT1, testsT2, testsT3, testsT4,testsT4Aux,testsT6]
--- ghci -i="src" -i="tests" tests/myTests.hs
+-- ghci -i="src" -i="tests" tests/MyTests.hs
+
+
+-- isto é copy paste da tarefa5 devido a erros no import
+compressMapa :: [(Peca,(Int,Int))] -> [(Peca,[(Int,Int)])]
+compressMapa [] = []
+compressMapa mapa = [(Bloco,a),(Caixa,b),(Porta,c),(Picos,d)]
+                    where (a,b,c,d) = foldr (\(peca,coords) (r1,r2,r3,r4) -> case peca of Bloco -> (coords:r1,r2,r3,r4)
+                                                                                          Caixa -> (r1,coords:r2,r3,r4)
+                                                                                          Porta -> (r1,r2,coords:r3,r4)
+                                                                                          Picos -> (r1,r2,r3,coords:r4)) ([],[],[],[]) mapa
+decompressMapa :: [(Peca,[(Int,Int)])] -> [(Peca,(Int,Int))]
+decompressMapa [] = []
+decompressMapa [(Bloco,a),(Caixa,b),(Porta,c),(Picos,d)] = blocos ++ caixas ++ portas ++ picos
+                    where blocos = map (\coords -> (Bloco,coords)) a
+                          caixas = map (\coords -> (Caixa,coords)) b
+                          portas = map (\coords -> (Porta,coords)) c
+                          picos = map (\coords -> (Picos,coords)) d
+
+makeMap :: [(Peca,[(Int,Int)])] -> Mapa
+makeMap m = constroiMapa (decompressMapa m)
