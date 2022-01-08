@@ -236,7 +236,7 @@ draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec,_)) =
     draw (jogo, pics, Play (-1,0,0))
 
 -- MapEditor
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door, spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _,_)) =
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door, spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _,_)) =
     return (Pictures [snowbg, (Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door, spikes] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
         [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))])
     where (map2,scale) | mode == 2 = (mapa,0.25)
@@ -274,7 +274,7 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), Pictures pics, Won (mov,sec)) =
     where bg = pics !! 14
 
 -- TabMenu
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door, spikes ,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), (TabMenu (posMenu,e2@(_,_,gm)))) = 
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door, spikes ,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), (TabMenu (posMenu,e2@(_,_,gm)))) = 
         do drawjogo <- draw e2
            return $ case gm of 
                         Play n -> Pictures (drawjogo:menuplay:[tabpointer1])
@@ -303,7 +303,7 @@ draw (jogo, pics, SaveLoadEditor((_,n),_)) =
         return screendraw
 
 -- Play, Menu, Map Selector e Solver
-draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door,spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,arrowLeft,arrowRight]), gamemode)
+draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door,spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,arrowLeft,arrowRight]), gamemode)
     | xmax <= 21 = let offset = getOffset mapa
                        map3 = getLines y mapa
                        offsetY = getOffsetY map3 in -- scrolling desnecessário para mapas pequenos, temos de centrar o mapa consoante xmax
@@ -366,10 +366,10 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
 -- desenha o menu SaveLoad para o Play e Editor
 drawscreen ::  Picture -> Jogo -> Int -> Int -> IO Picture -- recebe a picture já feita do jogo de fundo; o jogo para desenhar no preview; um inteiro para indicar a posição atual nas janelas de SaveLoad;um inteiro para indicar o modo de jogo: 1 -> Play, 2 -> Editor
 drawscreen pics@(Pictures pic) (Jogo [] _) n gamemode = do let noLoadText = (Translate (-200) 0 (Scale 0.5 0.5 (Pictures [Text "Savefile Empty", Translate 0 (-120) (Text "Keep playing!")])))
-                                                               functionpics = drop 19 pic
+                                                               functionpics = drop 17 pic
                                                            return (Pictures [(pic !! 16), noLoadText, loadpointers (Pictures functionpics) n gamemode]) -- se o jogador for para uma janela (das 3 possíveis) onde não consta um jogo guardado, desenha um texto en vez de um preview de jogo
 drawscreen pics@(Pictures pic) jogo n gamemode = do previewMap <- draw (jogo,pics, MapSelector ([],0)) -- n importa o estado aqui, apenas o jogo, por isso peguei no estado que usa menos valores
-                                                    let functionpics = drop 19 pic
+                                                    let functionpics = drop 17 pic
                                                     return (Pictures [(pic !! 16),(Scale 0.3 0.3 previewMap), (loadpointers (Pictures functionpics) n gamemode)])
 
 -- Desenha as setas nas janelas do SaveLoad, para orientar o jogador                                        
@@ -777,14 +777,12 @@ main = do
     Just sandbg <- loadJuicy "sand.png"
     Just spikes <- loadJuicy "spikes.png"
     Just savescreen <- loadJuicy "savefile.png"
-    Just overwrite <- loadJuicy "overwrite.png"
-    Just loadquestion <- loadJuicy "load.png"
     Just arrowLeft <- loadJuicy "arrow-red-left.png"
     Just arrowRight <- loadJuicy "arrow-red-right.png"
     playIO window
            (white)
            fr
-           (estadoBase (Pictures [(Scale 2.783 2.783 playerLeft),(Scale 2.783 2.783 playerRight), (Scale 0.186 0.186 brick), (Scale 2.0 2.0 crate), (Scale 0.674 0.451 door), (Scale 0.0762 0.0745 spikes),menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,overwrite,loadquestion,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]) (Menu infoMenu)) -- 64x64 px
+           (estadoBase (Pictures [(Scale 2.783 2.783 playerLeft),(Scale 2.783 2.783 playerRight), (Scale 0.186 0.186 brick), (Scale 2.0 2.0 crate), (Scale 0.674 0.451 door), (Scale 0.0762 0.0745 spikes),menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]) (Menu infoMenu)) -- 64x64 px
            draw
            eventListener
            step
