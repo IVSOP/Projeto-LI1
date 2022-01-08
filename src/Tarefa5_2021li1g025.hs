@@ -316,7 +316,7 @@ drawscreen pics@(Pictures pic) (Jogo [] _) n gamemode = do let noLoadText = (Tra
                                                            return (Pictures [(pic !! 16), noLoadText, loadpointers (Pictures functionpics) n gamemode]) -- se o jogador for para uma janela (das 3 possíveis) onde não consta um jogo guardado, desenha um texto en vez de um preview de jogo
 drawscreen pics@(Pictures pic) jogo n gamemode = do previewMap <- draw (jogo,pics, MapSelector ([],0)) -- n importa o estado aqui, apenas o jogo, por isso peguei no estado que usa menos valores
                                                     let functionpics = drop 17 pic
-                                                    return (Pictures [(pic !! 16),(Scale 0.3 0.3 previewMap), (loadpointers (Pictures functionpics) n gamemode)])
+                                                    return (Pictures [(pic !! 16),(Translate 0 (-(43.5)) (Scale 0.64 0.6 previewMap)), (loadpointers (Pictures functionpics) n gamemode)])
 
 {- | Função auxiliar do draw para SaveLoad do Play e Editor
 
@@ -327,9 +327,9 @@ loadpointers :: Picture
     -> Int -- ^ posição atual no menu SaveLoad do Play ou Editor
     -> Int -- ^ modo de jogo (para saber o nº da janela máxima)
     -> Picture -- janela atual no menu Save, modo de jogo (para saber o nº da janela máxima)
-loadpointers (Pictures [arrowLeft,arrowRight]) n gm  | gm == 1 && n == 3 || gm == 2 && n == 5 = Pictures [(Translate (-500) 0 arrowLeft)]
-                                                     | n == 1 = Pictures [(Translate (500) 0 arrowRight)]
-                                                     | otherwise = Pictures [(Translate (500) 0 arrowRight),(Translate (-500) 0 arrowLeft)]
+loadpointers (Pictures [arrowLeft,arrowRight]) n gm  | gm == 1 && n == 3 || gm == 2 && n == 5 = Pictures [(Translate (-750) 0 arrowLeft)]
+                                                     | n == 1 = Pictures [(Translate (750) 0 arrowRight)]
+                                                     | otherwise = Pictures [(Translate (750) 0 arrowRight),(Translate (-750) 0 arrowLeft)]
 
 
 -- | Converte o estado atual em imagens
@@ -741,6 +741,7 @@ eventListener (EventKey key Down _ _) e@(jogo,pics,SaveLoadEditor ((1,n),savegam
     SpecialKey KeyRight -> if n == 5 then return e 
                           else do newgame@(neweditor,infoeditor) <- loadGameEditor n
                                   return (neweditor,pics,SaveLoadEditor ((1,n+1),newgame))
+    _ -> return e
 -- interagir com o Save no Play 
 -- 3 janelas possíveis
 -- da 1 janela não dá para ir mais para a esquerda, e na 3 mais para a direita
