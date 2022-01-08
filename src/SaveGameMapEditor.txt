@@ -1,1 +1,1 @@
-([(Bloco,[(1,3)]),(Caixa,[]),(Porta,[]),(Picos,[])],Jogador (0,0) Este False,(-13,-7),(1,3),Bloco)
+([(Bloco,[(0,1)]),(Caixa,[]),(Porta,[]),(Picos,[])],Jogador (0,0) Este False,(-13,-7),(2,1),Bloco)
