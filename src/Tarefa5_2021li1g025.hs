@@ -903,7 +903,7 @@ main = do
     Just snowbg <- loadJuicy "snow.png"
     Just grassbg <- loadJuicy "greenfields.png"
     Just sandbg <- loadJuicy "sand.png"
-    Just spikes <- loadJuicy "spikes.png"
+    Just spikes <- loadJuicy "spike.png"
     Just savescreen <- loadJuicy "savefile.png"
     Just arrowLeft <- loadJuicy "arrow-red-left.png"
     Just arrowRight <- loadJuicy "arrow-red-right.png"
@@ -916,6 +916,11 @@ main = do
            step
 
 {- Notas e outros comentários
+
+Imagens:
+A textura do "red-brick.png" foi descarregada de "http://minecraft.novaskin.me/gallery/tag/texture:concrete_red?next=CjoKFAoHaG90bmVzcxIJIe_Jw0JtQ4NAEh5qDHN-c2tpbmVkaXRvcnIOCxIEU2tpbhj4qY_BBQwYACAB"
+Os restantes blocos e sprite do jogador foram descarregados de diferentes packs no "itch.io" (não sabemos qual ao certo)
+Todos os menus interativos e associados foram construídos manualmente no "canva.com"
 
 Controlos:
  Play: 
