@@ -230,12 +230,42 @@ getPictures pics@[brick, crate, door, spikes] (x,x2,y) ((peca:linha):mapa) =
                 | peca == Picos = spikes
                 | otherwise = Blank
 
+convert1 :: (Int,Int) -> [(Int,Int,MenuStates)] -> MenuStates -- percorre lista infoMenu e verifica correspondências da posição do jogador com as portas do jogo
+convert1 (x,y) [] = Normal
+convert1 (x,y) ((a,b,c):t)  | (a,b) == (x,y) = c
+                            | otherwise = convert1 (x,y) t
+
+convert2 :: (Int,Int) -> [(Int,Int,Int)] -> Int -- percorre lista infoMenu e verifica correspondências da posição do jogador com as portas do jogo
+convert2 (x,y) [] = 0
+convert2 (x,y) ((a,b,c):t)  | (a,b) == (x,y) = c
+                            | otherwise = convert2 (x,y) t
+
+-- Funções auxiliares do draw para SaveLoad do Play e Editor
+
+-- desenha o menu SaveLoad para o Play e Editor
+drawscreen ::  Picture -> Jogo -> Int -> Int -> IO Picture -- recebe a picture já feita do jogo de fundo; o jogo para desenhar no preview; um inteiro para indicar a posição atual nas janelas de SaveLoad;um inteiro para indicar o modo de jogo: 1 -> Play, 2 -> Editor
+drawscreen pics@(Pictures pic) (Jogo [] _) n gamemode = do let noLoadText = (Translate (-200) 0 (Scale 0.5 0.5 (Pictures [Text "Savefile Empty", Translate 0 (-120) (Text "Keep playing!")])))
+                                                               functionpics = drop 17 pic
+                                                           return (Pictures [(pic !! 16), noLoadText, loadpointers (Pictures functionpics) n gamemode]) -- se o jogador for para uma janela (das 3 possíveis) onde não consta um jogo guardado, desenha um texto en vez de um preview de jogo
+drawscreen pics@(Pictures pic) jogo n gamemode = do previewMap <- draw (jogo,pics, MapSelector ([],0)) -- n importa o estado aqui, apenas o jogo, por isso peguei no estado que usa menos valores
+                                                    let functionpics = drop 17 pic
+                                                    return (Pictures [(pic !! 16),(Scale 0.3 0.3 previewMap), (loadpointers (Pictures functionpics) n gamemode)])
+
+-- Desenha as setas nas janelas do SaveLoad, para orientar o jogador                                        
+loadpointers :: Picture -> Int -> Int -> Picture -- janela atual no menu Save, modo de jogo (para saber o nº da janela máxima)
+loadpointers (Pictures [arrowLeft,arrowRight]) n gm  | gm == 1 && n == 3 || gm == 2 && n == 5 = Pictures [(Translate (-500) 0 arrowLeft)]
+                                                     | n == 1 = Pictures [(Translate (500) 0 arrowRight)]
+                                                     | otherwise = Pictures [(Translate (500) 0 arrowRight),(Translate (-500) 0 arrowLeft)]
+
+
+-- | Converte o estado atual em imagens
 draw :: Estado -> IO Picture
--- MapEditor transferido para play (se mode == 3)
+-- MapEditor transferido para play (se mode == 3) ---------------------
 draw (jogo, pics, MapEdit ((x1,y1), (x2,y2), peca, _, 3, sec,_)) =
     draw (jogo, pics, Play (-1,0,0))
 
--- MapEditor
+-- MapEditor ----------------------------------------------------------
+-- desenha o mapa todo fazendo translate com as coordenadas da camera
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight, brick, crate, door, spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), MapEdit ((x1,y1), (x2,y2), peca, _, mode, _,_)) =
     return (Pictures [snowbg, (Scale scale scale (Pictures ((Translate offsetxJogador offsetyJogador picFinal):(linha1):(linha2):(getPictures [brick, crate, door, spikes] (64*x1f,64*x1f,((-64)*y1f)) map2) ++ 
         [Translate offsetx offsety (Pictures [pecaPic, outline])] ++ [Scale 0.25 0.25 (Translate (-200) 150 texto)])))])
@@ -268,12 +298,12 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), (Pictures [playerLeft, playerRight,
                                                                                                     False -> " nao ") ++ "e valido")
                 | otherwise = Blank
 
--- Won
+-- Won ----------------------------------------------------------------
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), Pictures pics, Won (mov,sec)) =
     return (Pictures [bg, Translate (-200) 0 (Scale 0.5 0.5 (Pictures [Text "You Won!!!", Translate 0 (-120) (Text ("Movements: " ++ (show mov))), Translate 0 (-250) (Text ("In " ++ show (round sec) ++ " seconds"))]))]) -- jogador chegou à porta final
     where bg = pics !! 14
 
--- TabMenu
+-- TabMenu ------------------------------------------------------------
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door, spikes ,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,(Scale 0.5 0.5 arrowLeft),(Scale 0.3 0.3 arrowRight)]), (TabMenu (posMenu,e2@(_,_,gm)))) = 
         do drawjogo <- draw e2
            return $ case gm of 
@@ -292,28 +322,30 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           tabpointer6 = Pictures ((Translate (-250) (-100) playerRight):[Translate 250 (-100) playerLeft])
           tabpointer7 = Pictures ((Translate (-250) (280-140*((fromIntegral (posMenu))-1)) playerRight):[Translate 250 (280-140*((fromIntegral (posMenu))-1)) playerLeft])
 
---SaveLoad do Play
+-- SaveLoad do Play ---------------------------------------------------
 draw (jogo,pics, SaveLoadPlay ((_,n),_)) = 
     do  screendraw <- drawscreen pics jogo n 1 
         return screendraw
 
---SaveLoad do Editor
+--SaveLoad do Editor --------------------------------------------------
 draw (jogo, pics, SaveLoadEditor((_,n),_)) =
     do  screendraw <- drawscreen pics jogo n 2 
         return screendraw
 
--- Play, Menu, Map Selector e Solver
+-- Play, Menu, Map Selector e Solver-----------------------------------
+-- permite uso de mapas grandes devido ao scroll
 draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerRight, brick, crate, door,spikes,menuplay,menuselector,menueditor,menusolvertype,menusolver,menusolverend,menusolverimp,snowbg,grassbg,sandbg,savescreen,arrowLeft,arrowRight]), gamemode)
+    -- mapa com menos de 21 blocos, scrolling desnecessário mas temos de o centrar
     | xmax <= 21 = let offset = getOffset mapa
                        map3 = getLines y mapa
-                       offsetY = getOffsetY map3 in -- scrolling desnecessário para mapas pequenos, temos de centrar o mapa consoante xmax
+                       offsetY = getOffsetY map3 in
         return (Pictures (sandbg:(getPictures [brick, crate, door, spikes] (offset,offset,offsetY) map3)++[Translate ((xf*64)+offset) ((-y2*64)+offsetY) picFinal]))
-
+    -- jogador perto da parede (esquerda): mapa estático, só se move o jogador
     | x <= 10 = let map2 = map (\linha -> take 21 linha) mapa
                     map3 = getLines y map2
                     offsetY = getOffsetY map3 in
         return (Pictures (sandbg:(getPictures [brick, crate, door, spikes] (offset,offset,offsetY) map3)++[Translate ((xf*64)+offset) (((-y2*64))+offsetY) picFinal]))
-    
+    -- jogador perto da parede (direita): o mesmo que em cima
     | xf >= (xmax - 10) = let wallDistance = (round xmax)-20
                               map2 = map (\linha -> drop wallDistance linha) mapa
                               x2 = (xf-(fromIntegral wallDistance)) -- converte coordenadas do jogador em coordenadas no ecrã
@@ -321,12 +353,11 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
                               offsetY = getOffsetY map3 in
         --debug Scale 0.1 0.1 (Text (show map2))
         return (Pictures (sandbg:(getPictures [brick, crate, door, spikes] (offset,offset,offsetY) map3)++[Translate ((x2*64)+offset) (((-y2*64))+offsetY) picFinal]))
-    
+    -- jogador a meio do mapa: jogador fica no centro do ecrã horizontalmente, e fazemos scroll do mapa
     | otherwise = let map2 = getLines y mapa
                       map3 = (map (\linha -> take 21 linha) (map (\linha -> drop (x-10) linha) map2))
                       offsetY = getOffsetY map3 in
         return (Pictures (sandbg:(getPictures [brick, crate, door, spikes] (offset,offset,offsetY) map3)++[Translate 0 (((-y2*64))+offsetY) picFinal]))
-
     where xmax = fromIntegral (length (head mapa))
           ymax = (length mapa)-1
 
@@ -355,33 +386,16 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           getOffsetY :: Mapa -> Float
           getOffsetY map3 = ((64)*((ymax2/2))-64)
                           where ymax2 = fromIntegral (length map3)
-          y2 = fromIntegral (mod y 15)
-          getLines :: Int -> Mapa -> Mapa -- devolve linhas do mapa a renderizar consoante altura do jogador
+          y2 = fromIntegral (mod y 15) -- o mapa é dividido em secções de 15 blocos e é devolvida aquela que tem o jogador
+          getLines :: Int -> Mapa -> Mapa
           getLines y l = drop (15*(section-1)) (take ((15*section)+1) l)
                        where section = (div y 15)+1
 
-
--- Funções auxiliares do draw para SaveLoad do Play e Editor
-
--- desenha o menu SaveLoad para o Play e Editor
-drawscreen ::  Picture -> Jogo -> Int -> Int -> IO Picture -- recebe a picture já feita do jogo de fundo; o jogo para desenhar no preview; um inteiro para indicar a posição atual nas janelas de SaveLoad;um inteiro para indicar o modo de jogo: 1 -> Play, 2 -> Editor
-drawscreen pics@(Pictures pic) (Jogo [] _) n gamemode = do let noLoadText = (Translate (-200) 0 (Scale 0.5 0.5 (Pictures [Text "Savefile Empty", Translate 0 (-120) (Text "Keep playing!")])))
-                                                               functionpics = drop 17 pic
-                                                           return (Pictures [(pic !! 16), noLoadText, loadpointers (Pictures functionpics) n gamemode]) -- se o jogador for para uma janela (das 3 possíveis) onde não consta um jogo guardado, desenha um texto en vez de um preview de jogo
-drawscreen pics@(Pictures pic) jogo n gamemode = do previewMap <- draw (jogo,pics, MapSelector ([],0)) -- n importa o estado aqui, apenas o jogo, por isso peguei no estado que usa menos valores
-                                                    let functionpics = drop 17 pic
-                                                    return (Pictures [(pic !! 16),(Scale 0.3 0.3 previewMap), (loadpointers (Pictures functionpics) n gamemode)])
-
--- Desenha as setas nas janelas do SaveLoad, para orientar o jogador                                        
-loadpointers :: Picture -> Int -> Int -> Picture -- janela atual no menu Save, modo de jogo (para saber o nº da janela máxima)
-loadpointers (Pictures [arrowLeft,arrowRight]) n gm  | gm == 1 && n == 3 || gm == 2 && n == 5 = Pictures [(Translate (-500) 0 arrowLeft)]
-                                                     | n == 1 = Pictures [(Translate (500) 0 arrowRight)]
-                                                     | otherwise = Pictures [(Translate (500) 0 arrowRight),(Translate (-500) 0 arrowLeft)]
-
+-- | Efetua uma ação consoante a tecla pressionada ou largada e o estado atual
 eventListener :: Event -> Estado -> IO Estado
--- esta secção são comandos debug ou reset ----------------------------
 -- comando para exit
 eventListener (EventKey (Char 'q') Down _ _) _ = exitSuccess
+-- comandos debug -----------------------------------------------------
 -- menu
 eventListener (EventKey (SpecialKey KeyBackspace) Down _ _) (_, pic, _) = return (estadoBase pic (Menu infoMenu))
 -- põe as informações do modo de jogo no terminal
@@ -406,7 +420,7 @@ eventListener (EventKey (SpecialKey KeyF8) Down _ _) (_, pic, Play (n,_,_)) = re
 eventListener (EventKey (SpecialKey KeyF9) Down _ _) (_, pic, Play (n,_,_)) = return (estadoBase pic (Play (n+1,0,0)))
 -----------------------------------------------------------------------
 
--- Quick save e load
+-- Quick save e load --------------------------------------------------
 eventListener (EventKey (Char 's') Down _ _) e@(Jogo mapa jogador, _, Play info@(n,_,_)) -- escrever estado Play
     = do let str = show ((compressMapa (desconstroiMapa mapa)),jogador,info)
          saveGame "SaveGamePlay.txt" str 0
@@ -417,32 +431,30 @@ eventListener (EventKey (Char 'l') Down _ _) (_, pic, Play (n,_,_)) -- carregar 
          return (Jogo (constroiMapa (decompressMapa mapa)) jogador, pic, Play info)
 eventListener (EventKey (Char 'L') Down _ _) e@(_, pic, MapEdit (_,_,_,_,_,_,n)) = do (jogo,gm) <- loadGameEditor (n-1)
                                                                                       return (jogo, pic, MapEdit gm)
-eventListener (EventKey (Char 'r') Down _ _) e@(_, pic, MapEdit (_,_,_,_,_,_,n)) = do (jogo,gm) <- loadGameEditor (n-1) -- l e r fazem a mesma coisa, pelo menos por agora
-                                                                                      return (jogo, pic, MapEdit gm)                                                                                         
 eventListener (EventKey (Char 'S') Down _ _) e@(jogo@(Jogo mapa jogador), pic, MapEdit gm@(c1,c2,peca,_,_,_,n)) =
     do let str = show (compressMapa (desconstroiMapa mapa),jogador,c1,c2,peca)
        saveGame "SaveGameMapEditor.txt" str (n-1)
        return (jogo, pic, MapEdit gm)
 
--- reset do Play
+-- reset do nível -----------------------------------------------------
 eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm@(Play (a,sec,mov))) = do savedata <- readFile "SaveGamePlay.txt"
                                                                                      let (_,_,(_,sec2,mov2)) = read ((lines savedata) !! 0)::([(Peca,[(Int,Int)])],Jogador,PlayInfo) -- especificar o tipo para o read não fazer conflito
                                                                                          (jogo,_,_) = estadoBase pic gm
                                                                                      return (jogo,pic,Play (a,sec+sec2,mov+mov2))
---eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, Won _) = return (estadoBase pic (Play (1,(0,0),0,0)))
---eventListener (EventKey (Char 'r') Down _ _) (jogo, pic, gm) = return (estadoBase pic gm)
+eventListener (EventKey (Char 'r') Down _ _) e@(_, pic, MapEdit (_,_,_,_,_,_,n)) = do (jogo,gm) <- loadGameEditor (n-1) -- l e r fazem a mesma coisa, pelo menos por agora
+                                                                                      return (jogo, pic, MapEdit gm)
 
--- Won (basta carregar em qualquer tecla)
+-- Won (basta carregar em qualquer tecla) -----------------------------
 eventListener (EventKey _ Down _ _) (_, pic, Won _) = return (estadoBase pic (Menu infoMenu))
 
--- MapEditor (mode == 3, jogar o mapa, usa o Play para permitir jogar)
+-- MapEditor (mode == 3, jogar o mapa, usa o Play para permitir jogar)-
 eventListener keyinfo@(EventKey key Down _ _) e@(jogo, pic, m@(MapEdit (c1, c2, peca, states, 3, sec,n))) =
     case key of SpecialKey KeyEsc -> return e -- TODO
                 Char 'p' -> return (jogo, pic, MapEdit (c1,c2,peca,states,0,sec,n))
                 _ -> do (jogo2,_,_) <- eventListener keyinfo (jogo, pic, Play (-1,0,0)) -- -1 para nao dar conflito (??)
                         return (jogo2,pic,m)
 
--- TabMenu e Solver
+-- TabMenu e Solver ---------------------------------------------------
 eventListener (EventKey (SpecialKey KeyEsc) Down _ _) e@(jogo, pics, gm) = return $ case gm of -- para entrar e sair do estado TabMenu
     Won _ -> e
     Menu _ -> e
@@ -532,7 +544,7 @@ eventListener (EventKey (SpecialKey KeyEnter) Down _ _) e@(_,pics, TabMenu (pos,
 eventListener _ e@(_,_,TabMenu _) = return e
 eventListener _ e@(_,_,Solver (_,2)) = return e
 
--- MapEditor (tecla pressionada)
+-- MapEditor (tecla pressionada) --------------------------------------
 eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir caixa)), pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode, sec, n)) 
     | key == Char 'p' = if mode == 3 then do (jogo,gm) <- loadGameEditor (n-1)
                                              return (jogo,pic,MapEdit gm)
@@ -581,7 +593,7 @@ eventListener (EventKey key Down _ _) e@(Jogo mapa (jogador@(Jogador (x,y) dir c
           sec2 | oRhor1 == 0 && oRhor2 == 0 && oRvert1 == 0 && oRvert2 == 0 = 0
                | otherwise = sec
 
--- MapEditor (tecla libertada)
+-- MapEditor (tecla libertada) ----------------------------------------
 eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, (oRhor1,oRvert1,oRhor2,oRvert2,oRaction), mode, sec, n))
     | key == SpecialKey KeyShiftL = return (jogo,pic, MapEdit ((x1,y1),(x2,y2),peca,(oRhor1,oRvert1,oRhor2,oRvert2,0),mode,sec,n))
     | otherwise = return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, mov, mode, 0.235,n))
@@ -592,7 +604,7 @@ eventListener (EventKey key Up _ _) (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca,
               | key == SpecialKey KeyEnter || key == SpecialKey KeyDelete = (oRhor1,oRvert1,oRhor2,oRvert2,0)
               | otherwise = (oRhor1,oRvert1,oRhor2,oRvert2,oRaction)
 
--- SaveLoadScreen 
+-- SaveLoadScreen -----------------------------------------------------
 -- escolher o mapa no Load do Play
 eventListener (EventKey (SpecialKey KeyEnter) Down _ _) e@(jogo,pics,SaveLoadPlay ((1,n),(jogoplay,infoplay))) =
        case jogoplay of 
@@ -653,7 +665,7 @@ eventListener (EventKey key Down _ _) e@(jogo,pics,SaveLoadEditor ((2,n),savegam
                                   return (neweditor,pics,SaveLoadEditor ((2,n+1),savegame))
     _ -> return e
 
--- Menu
+-- Menu ---------------------------------------------------------------
 eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
     | key /= SpecialKey KeyEnter = return (jogo2, pic, Menu (lista,atual))
     | atual == New = do let (Jogo mapa jogador) = jogos !! 1
@@ -671,7 +683,7 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, Menu (lista,atual))
                 | key == SpecialKey KeyRight = moveJogador jogo AndarDireita
                 | otherwise = jogo
 
--- Map selector e Play
+-- Map selector e Play ------------------------------------------------
 eventListener (EventKey key Down _ _) e@(jogo, pic, gamemode) = case gamemode of 
         Play (mapa,sec,mov) -> return (jogo2, pic, Play (mapa,sec,mov+1))
         MapSelector (lista,atual) -> 
@@ -689,8 +701,9 @@ eventListener (EventKey key Down _ _) e@(jogo, pic, gamemode) = case gamemode of
 
 eventListener _ s = return s
 
+-- | Função de update que permite guardar a passagem do tempo
 step :: Float -> Estado -> IO Estado
---Play
+--Play ----------------------------------------------------------------
 step time (jogo@(Jogo mapa (Jogador (x,y) _ _)), pic, gm@(Play (n,sec,mov)))
     | pecaAtual == Porta =
         if n == numeroMapas
@@ -706,7 +719,7 @@ step time (jogo@(Jogo mapa (Jogador (x,y) _ _)), pic, gm@(Play (n,sec,mov)))
     | otherwise = return (jogo, pic, Play (n,sec+time,mov))
     where pecaAtual = (mapa !! y) !! x
 
---Map edit com mode == 3 (jogar o mapa)
+--Map edit com mode == 3 (jogar o mapa) -------------------------------
 step time e@(Jogo mapa (Jogador (x,y) _ _), pic, MapEdit (_, _, _, _,3,_,n))
     | (pecaAtual == Picos || pecaAtual == Porta) = do (jogo,(c1,c2,peca,mov,_,sec,_)) <- loadGameEditor (n-1)
                                                       return (jogo, pic, MapEdit (c1,c2,peca,mov,3,sec,n))
@@ -714,7 +727,7 @@ step time e@(Jogo mapa (Jogador (x,y) _ _), pic, MapEdit (_, _, _, _,3,_,n))
     where pecaAtual = (mapa !! y) !! x
 
 
---Map edit
+--Map edit ------------------------------------------------------------
 step time e@(jogo@(Jogo mapa jogador), pic, MapEdit ((x1,y1), (x2,y2), peca, mov@(hor1,vert1,hor2,vert2,action),mode,sec,n)) =
     if timeBetweenmodes < 250
     then return (jogo, pic, MapEdit ((x1,y1), (x2,y2), peca, mov,mode,sec+time,n))
@@ -724,17 +737,17 @@ step time e@(jogo@(Jogo mapa jogador), pic, MapEdit ((x1,y1), (x2,y2), peca, mov
                 | otherwise = mapa
           timeBetweenmodes = mod (round (sec*1000)) 500
 
--- Menu
+-- Menu ---------------------------------------------------------------
 step time (jogo@(Jogo _ (Jogador (x,y) _ _)), pic, Menu (lista,antigo)) = 
     return (jogo, pic, Menu (lista,atual))
     where atual = convert1 (x,y) lista
 
--- Map selector 
+-- Map selector -------------------------------------------------------
 step time (jogo@(Jogo _ (Jogador (x,y) _ _)), pic, MapSelector (lista,antigo)) = 
     return (jogo, pic, MapSelector (lista,atual))
     where atual = convert2 (x,y) lista
 
--- Solver
+-- Solver -------------------------------------------------------------
 step time e@(jogo, pic, Solver ((prevE, solution, movelist,choice,sec),2)) = 
     return $ case solution of  -- prevE será sempre tabMenu porque o Solver é aberto no tabMenu
                 Nothing -> (jogo,pic,TabMenu (1,(jogo, pic, Solver ((prevE, Nothing, Nothing ,choice,0),4)))) -- os valores dentro de Solver são na maioria arbitrários (_,4)
@@ -748,16 +761,7 @@ step time e@(jogo, pic, Solver ((prevE, solution, movelist,choice,sec),2)) =
 -- Para outras situações
 step _ e = return e
 
-convert1 :: (Int,Int) -> [(Int,Int,MenuStates)] -> MenuStates -- percorre lista infoMenu e verifica correspondências da posição do jogador com as portas do jogo
-convert1 (x,y) [] = Normal
-convert1 (x,y) ((a,b,c):t)  | (a,b) == (x,y) = c
-                            | otherwise = convert1 (x,y) t
-
-convert2 :: (Int,Int) -> [(Int,Int,Int)] -> Int -- percorre lista infoMenu e verifica correspondências da posição do jogador com as portas do jogo
-convert2 (x,y) [] = 0
-convert2 (x,y) ((a,b,c):t)  | (a,b) == (x,y) = c
-                            | otherwise = convert2 (x,y) t
-
+-- | Função main, que carrega as imagens e inicia o jogo no estado inicial do menu
 main :: IO()
 main = do
     Just brick <- loadJuicy "red-brick.png"
@@ -786,3 +790,66 @@ main = do
            draw
            eventListener
            step
+
+{- Notas e outros comentários
+
+Controlos:
+ Play: 
+  setas- Fazer o jogador mover e interagir com caixas
+  Esc- Menu pequeno
+  s- Gravar o jogo (irá ser sempre na primeira linha do ficheiro, ou seja, a primeira save)
+  l- Carregar (o mesmo de cima)
+  r- Reset do nível
+
+ MapEditor:
+  setas- Mover o cursor   \
+  WASD- Mover a camera     \ 
+                            > estes quatro podem ser segurados para ações contínuas
+  Enter- Colocar uma peça  /
+  Delete- Apagar uma peça /
+  Espaço- Zoom
+  p- Jogar o mapa
+  v- Validar o mapa
+  1-Seleciona bloco
+  2-Seleciona caixa
+  3-Seleciona porta
+  4-Seleciona picos
+  5-Move o jogador para a posição do cursor
+  6-Toggle da caixa do jogador
+  7-Toggle da orientação do jogador
+  S (shift + s)- Gravar jogo
+  L (shift + l)- Carregar jogo (estas poderao criar alguns problemas)
+  Shift + setas- Mover o mapa inteiro
+
+ Menu:
+  setas tal como um jogo normal
+  enter para entrar na porta
+
+ TabMenu (menu pequeno):
+  setas e enter para mover e interagir
+
+ Debug:
+  KeyBackspace- Menu
+  I (shift + i)- põe as informações do gamemode no terminal
+  F1- Play no primeiro mapa
+  F2- MapEditor com mapa vazio
+  F3- Mapa alto para testar offset vertical
+  F5- Toggle da caixa do jogador 
+  F6- Mapa comprido para testar scroll e offset (é um dos mapa base)
+  F7- Load do primeiro mapa no ficheiro do editor de mapas
+  F8- Mapa anterior no Play (erro se já estiver no primeiro mapa)
+  F9- Mapa seguinte no Play (erro se já estiver no último mapa)
+
+
+
+Tivemos alguns problemas no save e load, nomeadamente problemas com o read em linhas vazias (parse error por várias razões)
+Também surgiram problemas com o facto de o read e writeFile serem lazy, nomeadamente ao tentar escrever no meio de um ficheiro preservando as linhas restantes
+Devido a isto, por vezes as funcionalidades de save e load (por exemplo ao entrar na porta Continue do menu) poderão dar problemas.
+
+Outro problema foi também não termos noção no início daquilo que queríamos fazer e de como organizar,
+o que fez com que os tipos de dados e o estado se fossem tornando cada vez mais complexos à medida que desenvolvíamos esta tarefa.
+Dividimos tudo em Gamemodes para tentar simplificar um pouco, mas ainda assim há muita coisa que é desnecessária, ineficiente ou confusa
+
+Para além idsso, a introdução dos picos veio também complicar o trabalho das tarefas anteriores, pois muitas funções que precisavam de verificar
+uma peça não iriam saber lidar com uma nova peça ou iriam fazê-lo mal, mas penso que conseguimos criar um jogo funcional e corrigir estas tarefas.
+-}
