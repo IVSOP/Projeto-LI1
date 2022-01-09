@@ -711,8 +711,8 @@ eventListener (EventKey (SpecialKey KeyEnter) Down _ _) e@(jogo,pics,SaveLoadEdi
 
 -- guardar o mapa no Save do Editor
 -- guarda o jogo atual na linha x do ficheiro "SaveGameEditor.txt"
-eventListener (EventKey (SpecialKey KeyEnter) Down _ _) e@(jogo,pics,SaveLoadEditor ((2,n),savegame@(jogoeditor@(Jogo mapa jogador),infoeditor))) =
-    do let str = show (compressMapa (desconstroiMapa mapa),jogador,infoeditor)
+eventListener (EventKey (SpecialKey KeyEnter) Down _ _) e@(jogo,pics,SaveLoadEditor ((2,n),savegame@(jogoeditor@(Jogo mapa jogador),(i1,i2,i3,_,_,_,_)))) =
+    do let str = show (compressMapa (desconstroiMapa mapa),jogador,i1,i2,i3)
        saveGame "SaveGameMapEditor.txt" str (n-1)
        return (jogoeditor,pics,SaveLoadEditor ((2,n),savegame))
 
