@@ -20,6 +20,7 @@ import Graphics.Gloss.Juicy (loadJuicy)
 import LI12122
 import System.Exit
 import System.IO
+import Niveis
 
 -- * Data e tipos principais
 
@@ -123,7 +124,7 @@ type SLEditorInfo = ((Int,Int),(Jogo,MapEditInfo))
 jogos :: [Jogo]
 jogos = [Jogo (makeMap map1) (Jogador (1,2) Este False),Jogo (makeMap map2) (Jogador (0,2) Este False),Jogo (makeMap map3) (Jogador (1,3) Este False),Jogo (makeMap map4) (Jogador (1,1) Este False),
         Jogo (makeMap map5) (Jogador (1,2) Este False),Jogo (makeMap map6) (Jogador (1,1) Este False), Jogo (makeMap map7) (Jogador (1,9) Este False), Jogo (makeMap map8) (Jogador (6,3) Oeste False),
-        Jogo (makeMap map9) (Jogador (12,13) Este False),Jogo (makeMap map10) (Jogador (1,1) Este True)]
+        Jogo (makeMap map9) (Jogador (12,13) Este False),Jogo (makeMap map10) (Jogador (1,1) Este True),j1,j2,j3,j4,j5]
 
 -- | Lista com as portas e os modos de jogo correspondentes no menu.
 infoMenu :: ([(Int,Int,MenuStates)],MenuStates)
@@ -186,7 +187,7 @@ loadGameEditor :: Int -- ^ Número da linha (número do mapa - 1)
     -> IO (Jogo,MapEditInfo)
 loadGameEditor n = do txt <- readFile "SaveGameMapEditor.txt"
                       let contents = lines txt
-                          (mapa,jogador,coords1,coords2,peca) | n+1 > length contents = ([],Jogador (0,0) Este False,(-13,-7),(0,0),Bloco)
+                          (mapa,jogador,coords1,coords2,peca) | n+1 > length contents = ([],Jogador (0,0) Este False,(-13,-7),(0,0),Bloco) -- falta caso para quando a linha é vazia
                                                               | otherwise = read (contents !! n) :: ([(Peca,[(Int,Int)])],Jogador,(Int,Int),(Int,Int),Peca)
                       return (Jogo (makeMap mapa) jogador, (coords1,coords2,peca,(0,0,0,0,0),0,0,n+1))
 
@@ -444,9 +445,9 @@ draw ((Jogo mapa (Jogador (x,y) dir caixa)), pics@(Pictures [playerLeft, playerR
           ymax = (length mapa)-1
 
           -- offset horizontal
-          getOffset :: Mapa -> Float -- assume se que o mapa já só tem 20 blocos de comprimento
+          getOffset :: Mapa -> Float
           getOffset map3 = ((-64)*((fromIntegral (length (head map3)))/2))
-          offset = -640
+          offset = -640 -- standard offsett para mapas com mais de 21 blocos
 
           xf = fromIntegral x
           yf = fromIntegral y
@@ -492,7 +493,7 @@ eventListener (EventKey (SpecialKey KeyF3) Down _ _) (_, pic, _) = return ((Jogo
 -- toggle da caixa do jogador
 eventListener (EventKey (SpecialKey KeyF5) Down _ _) (Jogo mapa (Jogador pos dir caixa), pic, gm) = return (Jogo mapa (Jogador pos dir (not caixa)), pic, gm)
  -- mapa comprido para testar offset horizontal (é um dos mapa base)
-eventListener (EventKey (SpecialKey KeyF6) Down _ _) (_, pic, _) = return (estadoBase pic (Play (5,0,0)))
+eventListener (EventKey (SpecialKey KeyF6) Down _ _) (_, pic, _) = return (estadoBase pic (Play (7,0,0)))
 -- load do primeiro mapa no ficheiro do editor (pode crashar se não houver nenhum (?))
 eventListener (EventKey (SpecialKey KeyF7) Down _ _) (_, pic, _) = do (jogo,gm) <- loadGameEditor 0
                                                                       return (jogo, pic, MapEdit gm)

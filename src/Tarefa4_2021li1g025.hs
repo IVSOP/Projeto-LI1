@@ -167,7 +167,7 @@ andar (Jogo mapa (Jogador (x,y) _ True)) AndarEsquerda -- com caixa
           posc = linhac !! (x-1)
           (x2,y2) = getNext l (x-1,y+1)
 andar (Jogo mapa (Jogador (x,y) _ True)) _
-    | (posj == Vazio || posj == Porta || posj == Picos) = (x2,y2-1)
+    | (posj == Vazio || posj == Porta || posj == Picos) && posc == Vazio = (x2,y2-1)
     | otherwise = (x,y)
     where linhac:linhaj:l = drop (y-1) mapa
           posj = linhaj !! (x+1)
