@@ -188,7 +188,9 @@ loadGameEditor :: Int -- ^ Número da linha (número do mapa - 1)
 loadGameEditor n = do txt <- readFile "SaveGameMapEditor.txt"
                       let contents = lines txt
                           (mapa,jogador,coords1,coords2,peca) | n+1 > length contents = ([],Jogador (0,0) Este False,(-13,-7),(0,0),Bloco) -- falta caso para quando a linha é vazia
-                                                              | otherwise = read (contents !! n) :: ([(Peca,[(Int,Int)])],Jogador,(Int,Int),(Int,Int),Peca)
+                                                              | otherwise = do let linha = (contents !! n)
+                                                                               if linha == [] then ([],Jogador (0,0) Este False,(-13,-7),(0,0),Bloco)
+                                                                               else read linha :: ([(Peca,[(Int,Int)])],Jogador,(Int,Int),(Int,Int),Peca)
                       return (Jogo (makeMap mapa) jogador, (coords1,coords2,peca,(0,0,0,0,0),0,0,n+1))
 
 
